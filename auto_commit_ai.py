@@ -93,9 +93,9 @@ def append_to_manifest(repo_name: str) -> None:
 def git_push_in_dir(repo_dir: Path, message: str) -> bool:
     """Add all, commit, push in repo_dir (origin already set by clone)."""
     try:
-        subprocess.run(["git", "add", "-A"], c=repo_dir, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-m", message], c=repo_dir, check=True, capture_output=True)
-        subprocess.run(["git", "push", "-u", "origin", "main"], c=repo_dir, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-A"], cwd=repo_dir, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", message], cwd=repo_dir, check=True, capture_output=True)
+        subprocess.run(["git", "push", "-u", "origin", "main"], cwd=repo_dir, check=True, capture_output=True)
         return True
     except subprocess.CalledProcessError as e:
         print("Git push error:", (e.stderr or e.stdout or b"").decode(errors="ignore"))
@@ -129,16 +129,16 @@ def do_new_idea_separate_repo() -> bool:
         clone_url = f"https://x-access-token:{GH_PAT}@github.com/{full_name}.git"
         subprocess.run(["git", "clone", clone_url, str(tmp_path)], check=True, capture_output=True)
         write_files(files, tmp_path)
-        subprocess.run(["git", "config", "user.name", "github-actions[bot]"], c=tmp_path, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"], c=tmp_path, check=True, capture_output=True)
-        subprocess.run(["git", "checkout", "-b", "main"], c=tmp_path, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=tmp_path, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"], cwd=tmp_path, check=True, capture_output=True)
+        subprocess.run(["git", "checkout", "-b", "main"], cwd=tmp_path, capture_output=True)
         if not git_push_in_dir(tmp_path, f"Initial: {repo_name}"):
             return False
     append_to_manifest(repo_name)
     try:
-        subprocess.run(["git", "add", str(MANIFEST_FILE)], c=REPO_ROOT, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-m", f"Agent: add repo {repo_name}"], c=REPO_ROOT, check=True, capture_output=True)
-        subprocess.run(["git", "push"], c=REPO_ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "add", str(MANIFEST_FILE)], cwd=REPO_ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", f"Agent: add repo {repo_name}"], cwd=REPO_ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "push"], cwd=REPO_ROOT, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         if "nothing to commit" not in (e.stderr or b"").decode(errors="ignore"):
             print("Main repo push error:", (e.stderr or e.stdout or b"").decode(errors="ignore"))
@@ -168,8 +168,8 @@ def do_improve_separate_repo() -> bool:
             print("No files in AI response.")
             return False
         write_files(files, tmp_path)
-        subprocess.run(["git", "config", "user.name", "github-actions[bot]"], c=tmp_path, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"], c=tmp_path, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=tmp_path, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"], cwd=tmp_path, check=True, capture_output=True)
         return git_push_in_dir(tmp_path, f"Improve: {repo_name}")
 
 
@@ -233,9 +233,9 @@ def get_existing_ideas() -> list[Path]:
 
 def git_commit_push(path: Path, message: str) -> bool:
     try:
-        subprocess.run(["git", "add", str(path)], c=REPO_ROOT, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-m", message], c=REPO_ROOT, check=True, capture_output=True)
-        subprocess.run(["git", "push"], c=REPO_ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "add", str(path)], cwd=REPO_ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", message], cwd=REPO_ROOT, check=True, capture_output=True)
+        subprocess.run(["git", "push"], cwd=REPO_ROOT, check=True, capture_output=True)
         return True
     except subprocess.CalledProcessError as e:
         out = (e.stderr or e.stdout or b"").decode(errors="ignore")
