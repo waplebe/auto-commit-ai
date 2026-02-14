@@ -1,0 +1,41 @@
+# Autonomous AI agent: creates small projects and commits 8x per day on GitHub (no PC needed).
+# Add repo secret: OPENROUTER_API_KEY (get key at https://openrouter.ai)
+
+name: Auto-commit AI
+
+on:
+  schedule:
+    # 8 times per day (every 3 hours, UTC)
+    - cron: '0 */3 * * *'
+  workflow_dispatch: # run manually from Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv
+
+      - name: Configure git for push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+
+      - name: Run AI agent (generate project + commit + push)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python auto_commit_ai.py
