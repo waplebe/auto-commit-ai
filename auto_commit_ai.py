@@ -35,14 +35,14 @@ REPO_ROOT = Path(__file__).resolve().parent
 IDEAS_DIR = REPO_ROOT / "ideas"
 MANIFEST_FILE = REPO_ROOT / "agent-repos.txt"
 NEW_IDEA_PROB = 3 / 8
-MAX_CONTEXT_CHARS = 5500
+MAX_CONTEXT_CHARS = 12000  # Increased for better context when improving projects
 
 REPO_OWNER = os.environ.get("REPO_OWNER", "").strip()
 GH_PAT = os.environ.get("GH_PAT", "").strip()
 USE_SEPARATE_REPOS = bool(REPO_OWNER and GH_PAT)
 
 
-def call_ai(messages: list, max_tokens: int = 4096, temperature: float = 0.85) -> str:
+def call_ai(messages: list, max_tokens: int = 12000, temperature: float = 0.85) -> str:
     payload = {
         "model": MODEL,
         "messages": messages,
@@ -174,19 +174,47 @@ def do_improve_separate_repo() -> bool:
 
 
 def ask_ai_new_idea() -> str:
-    prompt = """You are a programmer. Create ONE small, concrete project idea and generate its initial code.
+    prompt = """You are an experienced programmer. Create a COMPLETE, USEFUL project that solves a real problem or provides real value.
 
-Rules:
-- Output ONLY the project. No commentary. Start with ---FILE:
-- Use this format for each file:
----FILE: path/within/project/filename.extension---
-content
+CRITICAL REQUIREMENTS:
+- This must be a FULLY FUNCTIONAL project, not a demo or snippet. Minimum 8-15 files.
+- Output ONLY the project code. No commentary before or after. Start directly with ---FILE:
+
+File format (one block per file):
+---FILE: path/to/filename.extension---
+[full file content]
 ---END---
-- Create 2-5 files: at least one code file (Python/JS/HTML/Go etc.) and optionally README.md.
-- Pick a clear, useful idea: tiny CLI tool, small web widget, mini script, micro utility. Be creative but keep it small and runnable.
-- Code must be self-contained. No "your-api-key" placeholders.
-- Start directly with ---FILE:"""
-    return call_ai([{"role": "user", "content": prompt}])
+
+REQUIRED FILES (create all of these):
+1. README.md - Comprehensive documentation: what it does, why it's useful, how to install/run, examples, license
+2. Main code file(s) - Complete, working implementation (Python/JS/Go/Rust/TypeScript/etc)
+3. requirements.txt / package.json / Cargo.toml / go.mod - Dependencies file
+4. .gitignore - Appropriate ignores
+5. Example/usage file - Example script or demo showing how to use it
+6. Config file (if needed) - Configuration template
+7. Tests (if applicable) - At least basic tests
+8. Additional modules/utilities - Well-structured code with multiple files
+
+PROJECT REQUIREMENTS:
+- Solve a REAL problem: useful tool, library, CLI app, web service, data processor, automation script, etc.
+- Production-quality code: proper error handling, comments, clean structure
+- Self-contained: no "your-api-key" placeholders. Use environment variables or config files.
+- Complete: can be cloned and run immediately (with dependencies installed)
+- Useful idea: something people would actually use, not just "hello world" or trivial examples
+
+EXAMPLES OF GOOD PROJECTS:
+- CLI tool for batch processing files
+- Web scraper with data export
+- API wrapper library
+- Data converter/formatter
+- Automation script for common tasks
+- Small web app with backend
+- Code generator or template engine
+- File organizer/manager
+- Text processor or analyzer
+
+Start directly with ---FILE:"""
+    return call_ai([{"role": "user", "content": prompt}], max_tokens=12000)
 
 
 def gather_idea_context(idea_dir: Path) -> str:
@@ -210,19 +238,26 @@ def gather_idea_context(idea_dir: Path) -> str:
 
 
 def ask_ai_improve(idea_name: str, context: str) -> str:
-    prompt = f"""This is an existing project "{idea_name}". Improve it with one concrete step.
+    prompt = f"""This is an existing project "{idea_name}". Make a MEANINGFUL improvement.
 
 Current files (path and content):
 {context}
 
-Your task: add a small feature, fix something, add a test or example, improve README, or refactor. Output ONLY the files you change or add, in this format (paths relative to project root):
+Your task: Add a REAL feature, fix bugs, add tests, improve documentation, add examples, or refactor for better quality. This should be a substantial improvement, not a tiny change.
+
+Output ONLY the files you change or add, in this format (paths relative to project root):
 ---FILE: path/filename---
-content (full file content)
+[full file content - if modifying existing file, provide complete updated content]
 ---END---
 
-- Output 1-4 files. You can modify existing files (give full new content) or add new files.
+REQUIREMENTS:
+- Output 2-6 files (modify existing or add new)
+- Make it substantial: new feature, comprehensive tests, better docs, bug fixes, performance improvements
+- If adding a feature, include tests and update README
+- If fixing bugs, fix multiple related issues
+- If improving docs, make them comprehensive
 - No commentary. Start directly with ---FILE:"""
-    return call_ai([{"role": "user", "content": prompt}], max_tokens=4096, temperature=0.8)
+    return call_ai([{"role": "user", "content": prompt}], max_tokens=10000, temperature=0.8)
 
 
 def get_existing_ideas() -> list[Path]:
