@@ -186,32 +186,46 @@ File format (one block per file):
 ---END---
 
 REQUIRED FILES (create all of these):
-1. README.md - Comprehensive documentation: what it does, why it's useful, how to install/run, examples, license
-2. Main code file(s) - Complete, working implementation (Python/JS/Go/Rust/TypeScript/etc)
-3. requirements.txt / package.json / Cargo.toml / go.mod - Dependencies file
-4. .gitignore - Appropriate ignores
-5. Example/usage file - Example script or demo showing how to use it
-6. Config file (if needed) - Configuration template
-7. Tests (if applicable) - At least basic tests
-8. Additional modules/utilities - Well-structured code with multiple files
+1. README.md - Comprehensive documentation: what it does, why it's useful, how to install/run backend and frontend, API endpoints, examples, license
+2. Backend server file(s) - Complete API server (app.py/server.js/main.go/etc) with routes, handlers, proper structure
+3. Frontend files - HTML/CSS/JS or framework files (index.html, styles, scripts, components)
+4. requirements.txt / package.json / Cargo.toml / go.mod - Dependencies file
+5. .gitignore - Appropriate ignores (node_modules, __pycache__, .env, etc.)
+6. Configuration - .env.example or config template with environment variables
+7. API routes/handlers - Separate route files or well-organized handlers
+8. Database/storage setup (if needed) - Schema, migrations, or data models
+9. Tests (if applicable) - API endpoint tests, unit tests
+10. Additional utilities - Helpers, middleware, utils modules
 
 PROJECT REQUIREMENTS:
-- Solve a REAL problem: useful tool, library, CLI app, web service, data processor, automation script, etc.
-- Production-quality code: proper error handling, comments, clean structure
+- PREFER WEB SERVICES: Full-stack web applications with backend API and frontend UI
+- Solve a REAL problem: web service, SaaS tool, API service, dashboard, web app, microservice, etc.
+- Production-quality code: proper error handling, comments, clean structure, RESTful API design
 - Self-contained: no "your-api-key" placeholders. Use environment variables or config files.
 - Complete: can be cloned and run immediately (with dependencies installed)
 - Useful idea: something people would actually use, not just "hello world" or trivial examples
 
-EXAMPLES OF GOOD PROJECTS:
-- CLI tool for batch processing files
-- Web scraper with data export
-- API wrapper library
-- Data converter/formatter
-- Automation script for common tasks
-- Small web app with backend
-- Code generator or template engine
-- File organizer/manager
-- Text processor or analyzer
+EXAMPLES OF GOOD WEB SERVICE PROJECTS:
+- Web dashboard for data visualization (with backend API)
+- REST API service for specific task (file processing, data transformation, etc.)
+- Full-stack web app: todo manager, note-taking, expense tracker, habit tracker
+- Web service for text/image processing with API endpoints
+- Real-time web app (chat, notifications, live updates)
+- Web scraper service with API and web interface
+- Authentication/authorization microservice
+- Web-based tool for developers (code formatter, validator, converter)
+- API gateway or proxy service
+- Web service for file conversion/processing with upload interface
+- Dashboard for monitoring or analytics
+- Web-based automation tool with UI
+
+REQUIRED FOR WEB SERVICES:
+- Backend: API server (Flask/FastAPI/Express/Go/Rust) with proper routes
+- Frontend: HTML/CSS/JS or React/Vue/Svelte (can be simple but functional)
+- API endpoints: RESTful design, proper HTTP methods, error handling
+- Database/storage: SQLite/JSON files or proper DB setup (if needed)
+- Configuration: env vars, config files
+- README: How to run backend, frontend, what endpoints exist, how to use
 
 Start directly with ---FILE:"""
     return call_ai([{"role": "user", "content": prompt}], max_tokens=12000)
