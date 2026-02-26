@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Color palette — палитра и контраст</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      color: #e8e8e8;
+    }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 1.6rem; margin-bottom: 0.4rem; color: #fff; font-weight: 600; }
+    .sub { color: #a0aec0; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .card {
+      background: rgba(26, 32, 44, 0.85);
+      border: 1px solid rgba(160, 174, 192, 0.15);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .card h3 { font-size: 0.85rem; color: #a0aec0; margin-bottom: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+    .pick-row {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    input[type="color"] {
+      width: 56px;
+      height: 56px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      cursor: pointer;
+      padding: 2px;
+      background: transparent;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 0.7rem 1rem;
+      font-size: 1rem;
+      font-family: monospace;
+      border: 2px solid #2d3748;
+      border-radius: 10px;
+      background: #1a202c;
+      color: #e2e8f0;
+    }
+    input:focus { outline: none; border-color: #6366f1; }
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 0.5rem;
+    }
+    .swatch {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0.5rem;
+      font-size: 0.7rem;
+      font-family: monospace;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      transition: transform 0.15s;
+    }
+    .swatch:hover { transform: scale(1.05); }
+    .swatch.dark { color: #fff; }
+    .swatch.light { color: #1a1a2e; }
+    .contrast-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .contrast-row:last-child { border-bottom: none; }
+    .contrast-sq {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .contrast-label { flex: 1; font-size: 0.9rem; }
+    .contrast-ratio { font-family: monospace; color: #a0aec0; font-size: 0.85rem; }
+    .badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .badge.pass { background: #065f46; color: #6ee7b7; }
+    .badge.fail { background: #7f1d1d; color: #fca5a5; }
+    .footer { margin-top: 2rem; font-size: 0.8rem; color: #718096; text-align: center; }
+    .footer a { color: #a0aec0; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Color palette</h1>
+    <p class="sub">Подбери цвет — получи палитру, оттенки и проверку контраста (a11y)</p>
+
+    <div class="card">
+      <h3>Базовый цвет</h3>
+      <div class="pick-row">
+        <input type="color" id="colorPick" value="#6366f1">
+        <input type="text" id="hexInput" placeholder="#6366f1" value="#6366f1">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Палитра</h3>
+      <div class="swatch-grid" id="palette"></div>
+    </div>
+
+    <div class="card">
+      <h3>Контраст (WCAG)</h3>
+      <div id="contrast"></div>
+    </div>
+
+    <p class="footer">
+      <a href="https://github.com/waplebe/color-palette">Исходный код</a> · <a href="https://github.com/waplebe/project-ideas">project-ideas</a>
+    </p>
+  </div>
+  <script>
+    const colorPick = document.getElementById('colorPick');
+    const hexInput = document.getElementById('hexInput');
+    const paletteEl = document.getElementById('palette');
+    const contrastEl = document.getElementById('contrast');
+
+    function hexToRgb(hex) {
+      const m = hex.replace(/^#/, '').match(/.{2}/g);
+      if (!m || m.length !== 3) return null;
+      return m.map(x => parseInt(x, 16));
+    }
+
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(x => Math.round(x).toString(16).padStart(2, '0')).join('');
+    }
+
+    function hexToHsl(hex) {
+      const rgb = hexToRgb(hex);
+      if (!rgb) return null;
+      let [r, g, b] = rgb.map(x => x / 255);
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      if (max === min) h = s = 0;
+      else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          default: h = (r - g) / d + 4;
+        }
+        h /= 6;
+      }
+      return [h * 360, s * 100, l * 100];
+    }
+
+    function hslToHex(h, s, l) {
+      s /= 100; l /= 100;
+      const a = s * Math.min(l, 1 - l);
+      const f = n => {
+        const k = (n + h / 30) % 12;
+        return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+      };
+      return rgbToHex(f(0) * 255, f(8) * 255, f(4) * 255);
+    }
+
+    function luminance(r, g, b) {
+      [r, g, b] = [r, g, b].map(x => {
+        x /= 255;
+        return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    function contrastRatio(hex1, hex2) {
+      const [r1, g1, b1] = hexToRgb(hex1);
+      const [r2, g2, b2] = hexToRgb(hex2);
+      const L1 = luminance(r1, g1, b1);
+      const L2 = luminance(r2, g2, b2);
+      const lighter = Math.max(L1, L2);
+      const darker = Math.min(L1, L2);
+      return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    function getHex() {
+      let v = hexInput.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+      if (/^[0-9a-fA-F]{6}$/.test(v)) return '#' + v;
+      return colorPick.value;
+    }
+
+    function syncInputs(hex) {
+      hexInput.value = hex;
+      colorPick.value = hex;
+    }
+
+    function buildPalette(baseHex) {
+      const hsl = hexToHsl(baseHex);
+      if (!hsl) return;
+      const [h, s, l] = hsl;
+      const colors = [];
+
+      colors.push({ hex: baseHex, label: 'Base' });
+      for (let i = 1; i <= 4; i++) colors.push({ hex: hslToHex(h, s, Math.min(100, l + i * 12)), label: '+' + (i * 12) + '%' });
+      for (let i = 1; i <= 4; i++) colors.push({ hex: hslToHex(h, s, Math.max(0, l - i * 12)), label: '-' + (i * 12) + '%' });
+      colors.push({ hex: hslToHex((h + 180) % 360, s, l), label: 'Comp' });
+      colors.push({ hex: hslToHex((h + 30) % 360, s, l), label: 'Ana+' });
+      colors.push({ hex: hslToHex((h + 330) % 360, s, l), label: 'Ana-' });
+
+      paletteEl.innerHTML = colors.map(c => {
+        const lum = hexToHsl(c.hex)[2];
+        const textClass = lum < 50 ? 'dark' : 'light';
+        return `<div class="swatch ${textClass}" style="background:${c.hex}" data-hex="${c.hex}" title="Клик — копировать">${c.hex}<br><small>${c.label}</small></div>`;
+      }).join('');
+
+      paletteEl.querySelectorAll('.swatch').forEach(el => {
+        el.addEventListener('click', () => {
+          navigator.clipboard.writeText(el.dataset.hex).then(() => {
+            const orig = el.innerHTML;
+            el.innerHTML = 'Скопировано!';
+            setTimeout(() => { el.innerHTML = orig; }, 600);
+          });
+        });
+      });
+    }
+
+    function buildContrast(baseHex) {
+      const white = '#ffffff';
+      const black = '#000000';
+      const ratioW = contrastRatio(baseHex, white);
+      const ratioB = contrastRatio(baseHex, black);
+      const bg = luminance(...hexToRgb(baseHex)) > 0.5 ? white : black;
+      const fg = baseHex;
+      const ratio = Math.max(ratioW, ratioB);
+
+      const wcagAA = 4.5;
+      const wcagAAA = 7;
+      const passAA = ratio >= wcagAA;
+      const passAAA = ratio >= wcagAAA;
+
+      contrastEl.innerHTML = `
+        <div class="contrast-row">
+          <div class="contrast-sq" style="background:${baseHex}"></div>
+          <div class="contrast-sq" style="background:#fff;border:1px solid #333"></div>
+          <div class="contrast-label">На белом</div>
+          <div class="contrast-ratio">${ratioW.toFixed(1)}:1</div>
+          <span class="badge ${ratioW >= wcagAA ? 'pass' : 'fail'}">${ratioW >= wcagAA ? 'AA' : '—'}</span>
+          <span class="badge ${ratioW >= wcagAAA ? 'pass' : 'fail'}">${ratioW >= wcagAAA ? 'AAA' : '—'}</span>
+        </div>
+        <div class="contrast-row">
+          <div class="contrast-sq" style="background:${baseHex}"></div>
+          <div class="contrast-sq" style="background:#000"></div>
+          <div class="contrast-label">На чёрном</div>
+          <div class="contrast-ratio">${ratioB.toFixed(1)}:1</div>
+          <span class="badge ${ratioB >= wcagAA ? 'pass' : 'fail'}">${ratioB >= wcagAA ? 'AA' : '—'}</span>
+          <span class="badge ${ratioB >= wcagAAA ? 'pass' : 'fail'}">${ratioB >= wcagAAA ? 'AAA' : '—'}</span>
+        </div>
+      `;
+    }
+
+    function update() {
+      const hex = getHex();
+      syncInputs(hex);
+      buildPalette(hex);
+      buildContrast(hex);
+    }
+
+    colorPick.addEventListener('input', () => { hexInput.value = colorPick.value; update(); });
+    hexInput.addEventListener('input', () => update());
+    hexInput.addEventListener('change', () => update());
+
+    update();
+  </script>
+</body>
+</html>
