@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Студия фокуса</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0c0d10;
+      --surface: #16181d;
+      --surface-2: #1c1e24;
+      --border: #2a2d35;
+      --text: #f0f0f2;
+      --muted: #6b7280;
+      --accent: #22c55e;
+      --accent-dim: rgba(34, 197, 94, 0.2);
+      --break: #3b82f6;
+      --break-dim: rgba(59, 130, 246, 0.2);
+      --shadow: 4px 4px 16px rgba(0,0,0,0.4), -2px -2px 8px rgba(255,255,255,0.02);
+      --glow: 0 0 40px rgba(34, 197, 94, 0.15);
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Manrope', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      grid-template-rows: auto 1fr auto;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Top bar */
+    .top-bar {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--accent);
+    }
+    .clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .clock-date { font-size: 0.8rem; color: var(--muted); }
+    .lang-toggle {
+      display: flex;
+      gap: 0.25rem;
+    }
+    .lang-toggle button {
+      padding: 0.35rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .lang-toggle button.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Left - Task + Sessions */
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .task-input {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-2);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .task-input:focus { border-color: var(--accent); }
+    .task-input::placeholder { color: var(--muted); }
+    .btn-start {
+      width: 100%;
+      padding: 0.9rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), #16a34a);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .btn-start:hover { transform: translateY(-1px); box-shadow: var(--glow); }
+    .btn-start.break { background: linear-gradient(135deg, var(--break), #2563eb); }
+    .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .sessions-list {
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .session-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.9rem;
+    }
+    .session-item:last-child { border-bottom: none; }
+    .session-task { color: var(--muted); font-size: 0.8rem; }
+
+    /* Center - Timer */
+    .center-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .timer-wrap {
+      position: relative;
+      width: 220px;
+      height: 220px;
+    }
+    .timer-ring {
+      transform: rotate(-90deg);
+    }
+    .timer-ring-bg { stroke: var(--border); fill: none; }
+    .timer-ring-fill {
+      stroke: var(--accent);
+      fill: none;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s linear, stroke 0.3s;
+    }
+    .timer-ring-fill.break { stroke: var(--break); }
+    .timer-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .timer-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.5rem;
+      font-weight: 300;
+      color: var(--text);
+    }
+    .timer-mode {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    /* Right - Stats */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 0.5rem 0;
+    }
+    .stat-label { font-size: 0.85rem; color: var(--muted); }
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: var(--accent);
+    }
+    .streak-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--accent-dim);
+      border-radius: 10px;
+      font-size: 0.9rem;
+    }
+
+    /* Bottom - Sounds */
+    .bottom-bar {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .sound-card {
+      flex: 1;
+      min-width: 120px;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .sound-card:hover { border-color: var(--accent); background: var(--surface-2); }
+    .sound-card.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      box-shadow: 0 0 20px rgba(34,197,94,0.1);
+    }
+    .sound-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      background: rgba(255,255,255,0.05);
+    }
+    .sound-card.active .sound-icon { background: var(--accent-dim); }
+    .sound-info { flex: 1; }
+    .sound-name { font-size: 0.9rem; font-weight: 500; }
+    .sound-desc { font-size: 0.7rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <span class="logo">focus.studio</span>
+      <div>
+        <div class="clock" id="clock">00:00</div>
+        <div class="clock-date" id="date">—</div>
+      </div>
+      <div class="lang-toggle">
+        <button type="button" data-lang="ru" class="active">RU</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+    </header>
+
+    <aside class="left-col">
+      <div class="card">
+        <div class="card-header" data-i18n="currentTask">Текущая задача</div>
+        <input type="text" class="task-input" id="taskInput" placeholder="Над чем работаешь?" maxlength="80">
+        <button type="button" class="btn-start" id="btnStart">Начать сессию</button>
+      </div>
+      <div class="card">
+        <div class="card-header" data-i18n="todaySessions">Сегодня</div>
+        <div class="sessions-list" id="sessionsList"></div>
+      </div>
+    </aside>
+
+    <main class="center-col">
+      <div class="card" style="padding: 2rem;">
+        <div class="timer-wrap">
+          <svg class="timer-ring" width="220" height="220" viewBox="0 0 220 220">
+            <circle class="timer-ring-bg" cx="110" cy="110" r="100"/>
+            <circle class="timer-ring-fill" id="timerRing" cx="110" cy="110" r="100"
+              stroke-dasharray="628" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-center">
+            <span class="timer-value" id="timerValue">25:00</span>
+            <span class="timer-mode" id="timerMode">Готов к фокусу</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="right-col">
+      <div class="card">
+        <div class="card-header" data-i18n="statistics">Статистика</div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="focusToday">Фокус сегодня</span>
+          <span class="stat-value" id="statToday">0 м</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="sessionsCount">Сессий</span>
+          <span class="stat-value" id="statSessions">0</span>
+        </div>
+        <div class="stat-row" style="margin-top: 0.5rem;">
+          <span class="streak-badge">
+            <span>🔥</span>
+            <span id="streak">0</span> <span data-i18n="days">дней</span>
+          </span>
+        </div>
+      </div>
+    </aside>
+
+    <footer class="bottom-bar">
+      <div class="card" style="flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 0.75rem;">
+        <div class="card-header" style="width: 100%; margin-bottom: 0;" data-i18n="ambient">Фон</div>
+        <div class="sound-card" data-sound="rain">
+          <div class="sound-icon">🌧</div>
+          <div class="sound-info">
+            <div class="sound-name">Дождь</div>
+            <div class="sound-desc">Мягкий ливень</div>
+          </div>
+        </div>
+        <div class="sound-card" data-sound="cafe">
+          <div class="sound-icon">☕</div>
+          <div class="sound-info">
+            <div class="sound-name">Кафе</div>
+            <div class="sound-desc">Разговоры, посуда</div>
+          </div>
+        </div>
+        <div class="sound-card" data-sound="nature">
+          <div class="sound-icon">🌲</div>
+          <div class="sound-info">
+            <div class="sound-name">Лес</div>
+            <div class="sound-desc">Птицы, ветер</div>
+          </div>
+        </div>
+        <div class="sound-card" data-sound="white">
+          <div class="sound-icon">⬜</div>
+          <div class="sound-info">
+            <div class="sound-name">Шум</div>
+            <div class="sound-desc">Белый шум</div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const FOCUS_MIN = 25;
+    const BREAK_MIN = 5;
+    const FULL_CIRCLE = 2 * Math.PI * 100;
+
+    const i18n = {
+      ru: {
+        currentTask: "Текущая задача",
+        taskPlaceholder: "Над чем работаешь?",
+        startSession: "Начать сессию",
+        stopSession: "Стоп",
+        todaySessions: "Сегодня",
+        statistics: "Статистика",
+        focusToday: "Фокус сегодня",
+        sessionsCount: "Сессий",
+        days: "дней",
+        ambient: "Фон",
+        ready: "Готов к фокусу",
+        focus: "Фокус",
+        break: "Перерыв",
+        rain: "Дождь", rainDesc: "Мягкий ливень",
+        cafe: "Кафе", cafeDesc: "Разговоры, посуда",
+        nature: "Лес", natureDesc: "Птицы, ветер",
+        white: "Шум", whiteDesc: "Белый шум",
+        noSessions: "Пока пусто"
+      },
+      en: {
+        currentTask: "Current task",
+        taskPlaceholder: "What are you working on?",
+        startSession: "Start session",
+        stopSession: "Stop",
+        todaySessions: "Today",
+        statistics: "Statistics",
+        focusToday: "Focus today",
+        sessionsCount: "Sessions",
+        days: "days",
+        ambient: "Ambient",
+        ready: "Ready to focus",
+        focus: "Focus",
+        break: "Break",
+        rain: "Rain", rainDesc: "Soft rain",
+        cafe: "Cafe", cafeDesc: "Chatter, clatter",
+        nature: "Forest", natureDesc: "Birds, wind",
+        white: "Noise", whiteDesc: "White noise",
+        noSessions: "Nothing yet"
+      }
+    };
+
+    let state = {
+      mode: "idle", // idle | focus | break
+      remaining: FOCUS_MIN * 60,
+      total: FOCUS_MIN * 60,
+      task: "",
+      sessions: [],
+      todayMinutes: 0,
+      streak: 0,
+      lang: localStorage.getItem("focus-lang") || "ru",
+      activeSound: null
+    };
+
+    function loadState() {
+      try {
+        const data = localStorage.getItem("focus-studio");
+        if (data) {
+          const saved = JSON.parse(data);
+          const today = new Date().toDateString();
+          if (saved.date === today) {
+            state.sessions = saved.sessions || [];
+            state.todayMinutes = saved.todayMinutes || 0;
+            state.streak = saved.streak || 0;
+          }
+        }
+      } catch (_) {}
+    }
+
+    function saveState() {
+      const today = new Date().toDateString();
+      localStorage.setItem("focus-studio", JSON.stringify({
+        date: today,
+        sessions: state.sessions,
+        todayMinutes: state.todayMinutes,
+        streak: state.streak
+      }));
+    }
+
+    function applyLang() {
+      const t = i18n[state.lang];
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const k = el.dataset.i18n;
+        if (t[k]) el.textContent = t[k];
+      });
+      document.getElementById("taskInput").placeholder = t.taskPlaceholder;
+      document.getElementById("btnStart").textContent = state.mode === "idle" ? t.startSession : t.stopSession;
+      document.querySelectorAll(".sound-card").forEach(card => {
+        const s = card.dataset.sound;
+        card.querySelector(".sound-name").textContent = t[s];
+        card.querySelector(".sound-desc").textContent = t[s + "Desc"];
+      });
+      document.querySelectorAll(".lang-toggle button").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.lang === state.lang);
+      });
+    }
+
+    function fmtTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    function updateTimer() {
+      const ring = document.getElementById("timerRing");
+      const progress = state.total > 0 ? state.remaining / state.total : 1;
+      ring.style.strokeDashoffset = FULL_CIRCLE * (1 - progress);
+      ring.classList.toggle("break", state.mode === "break");
+      document.getElementById("timerValue").textContent = fmtTime(state.remaining);
+      const t = i18n[state.lang];
+      document.getElementById("timerMode").textContent =
+        state.mode === "idle" ? t.ready : state.mode === "focus" ? t.focus : t.break;
+      const btn = document.getElementById("btnStart");
+      btn.textContent = state.mode === "idle" ? t.startSession : t.stopSession;
+      btn.classList.toggle("break", state.mode === "break");
+    }
+
+    function tick() {
+      if (state.mode === "focus" || state.mode === "break") {
+        state.remaining--;
+        if (state.remaining <= 0) {
+          if (state.mode === "focus") {
+            const mins = Math.round((state.total - 0) / 60);
+            state.todayMinutes += mins;
+            state.sessions.unshift({
+              task: state.task || "—",
+              mins,
+              time: new Date().toLocaleTimeString()
+            });
+            state.mode = "break";
+            state.remaining = BREAK_MIN * 60;
+            state.total = BREAK_MIN * 60;
+          } else {
+            state.mode = "idle";
+            state.remaining = FOCUS_MIN * 60;
+            state.total = FOCUS_MIN * 60;
+          }
+          saveState();
+          updateStats();
+          renderSessions();
+        }
+        updateTimer();
+      }
+    }
+
+    function updateStats() {
+      document.getElementById("statToday").textContent = state.todayMinutes + " м";
+      document.getElementById("statSessions").textContent = state.sessions.length;
+      document.getElementById("streak").textContent = state.streak;
+    }
+
+    function renderSessions() {
+      const el = document.getElementById("sessionsList");
+      el.innerHTML = state.sessions.slice(0, 8).map(s =>
+        `<div class="session-item">
+          <span class="session-task">${s.task}</span>
+          <span>${s.mins} м</span>
+        </div>`
+      ).join("") || `<div class="session-item" style="color:var(--muted)">${i18n[state.lang].noSessions}</div>`;
+    }
+
+    function startStop() {
+      if (state.mode === "idle") {
+        state.task = document.getElementById("taskInput").value.trim();
+        state.mode = "focus";
+        state.remaining = FOCUS_MIN * 60;
+        state.total = FOCUS_MIN * 60;
+      } else {
+        state.mode = "idle";
+        state.remaining = FOCUS_MIN * 60;
+        state.total = FOCUS_MIN * 60;
+      }
+      updateTimer();
+      saveState();
+    }
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("clock").textContent =
+        now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+      document.getElementById("date").textContent =
+        now.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short" });
+    }
+
+    document.getElementById("btnStart").addEventListener("click", startStop);
+
+    document.querySelectorAll(".lang-toggle button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.lang = btn.dataset.lang;
+        localStorage.setItem("focus-lang", state.lang);
+        applyLang();
+      });
+    });
+
+    document.querySelectorAll(".sound-card").forEach(card => {
+      card.addEventListener("click", () => {
+        state.activeSound = state.activeSound === card.dataset.sound ? null : card.dataset.sound;
+        document.querySelectorAll(".sound-card").forEach(c => c.classList.remove("active"));
+        if (state.activeSound) {
+          document.querySelector(`[data-sound="${state.activeSound}"]`).classList.add("active");
+        }
+      });
+    });
+
+    loadState();
+    applyLang();
+    updateTimer();
+    updateStats();
+    renderSessions();
+    updateClock();
+    setInterval(updateClock, 1000);
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
