@@ -9,8 +9,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard — Прогресс дня",
-  description: "Комплексный дашборд: прогресс дня, стоимость времени, фазы",
+  title: "Дыхание — Breathe",
+  description: "Дыхательные практики. Следуй за кругом.",
 };
 
 export default function RootLayout({
