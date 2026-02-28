@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Стоимость твоей минуты</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #0a0a0b;
+      --surface: #141416;
+      --border: #26262a;
+      --text: #fafafa;
+      --muted: #71717a;
+      --accent: #f59e0b;
+      --accent-dim: rgba(245, 158, 11, 0.15);
+      --glow: rgba(245, 158, 11, 0.4);
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+    
+    body {
+      font-family: 'Onest', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      overflow-x: hidden;
+    }
+
+    .screen {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    /* Noise overlay */
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 1;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      animation: fadeUp 0.8s ease-out;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .tagline {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      opacity: 0.9;
+    }
+
+    h1 {
+      font-family: 'Unbounded', sans-serif;
+      font-size: clamp(1.75rem, 5vw, 2.25rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 0.25rem;
+      background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .sub {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+
+    .input-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-block:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    input {
+      flex: 1;
+      font-family: 'Unbounded', 'Onest', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      outline: none;
+    }
+
+    input::placeholder { color: var(--muted); }
+
+    .currency {
+      font-size: 1.25rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* Result card */
+    .result-card {
+      background: linear-gradient(145deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .result-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .rate-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1.5rem 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .rate-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .rate-value {
+      font-family: 'Unbounded', monospace;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .rate-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Live burn */
+    .burn-block {
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .burn-text {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .burn-value {
+      font-family: 'Unbounded', monospace;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+
+    .burn-value.zero { color: var(--muted); }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="screen">
+    <div class="content">
+      <p class="tagline">Твой час стоит денег</p>
+      <h1>Сколько стоит<br>твоя минута?</h1>
+      <p class="sub">Зарплата в месяц → стоимость каждой секунды</p>
+
+      <div class="input-block">
+        <label for="salary">Зарплата в месяц</label>
+        <div class="input-wrap">
+          <input type="number" id="salary" value="120000" min="10000" step="5000" placeholder="120000" inputmode="numeric">
+          <span class="currency">₽</span>
+        </div>
+      </div>
+
+      <div class="result-card">
+        <div class="rate-row">
+          <div class="rate-item">
+            <span class="rate-value" id="perSec">—</span>
+            <span class="rate-label">₽/сек</span>
+          </div>
+          <div class="rate-item">
+            <span class="rate-value" id="perMin">—</span>
+            <span class="rate-label">₽/мин</span>
+          </div>
+          <div class="rate-item">
+            <span class="rate-value" id="perHour">—</span>
+            <span class="rate-label">₽/час</span>
+          </div>
+        </div>
+        <div class="burn-block">
+          <p class="burn-text">Пока ты смотришь на этот экран — уже</p>
+          <p class="burn-value" id="burn">0 ₽</p>
+        </div>
+      </div>
+
+      <p class="footer">
+        Один файл · <a href="https://github.com/waplebe/auto-commit-ai">Исходный код</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const HOURS_MONTH = 160;
+
+    function format(n) {
+      if (n >= 1000) return Math.round(n).toLocaleString('ru-RU');
+      if (n >= 1) return n.toFixed(1);
+      if (n >= 0.01) return n.toFixed(2);
+      return n.toFixed(3);
+    }
+
+    let salary = 120000;
+    let perSec = 0;
+    let burnStart = null;
+    let burnAccum = 0;
+
+    const salaryEl = document.getElementById('salary');
+    const perSecEl = document.getElementById('perSec');
+    const perMinEl = document.getElementById('perMin');
+    const perHourEl = document.getElementById('perHour');
+    const burnEl = document.getElementById('burn');
+
+    function update() {
+      salary = Number(salaryEl.value) || 0;
+      if (salary <= 0) {
+        perSecEl.textContent = perMinEl.textContent = perHourEl.textContent = '—';
+        burnEl.textContent = '0 ₽';
+        burnEl.classList.add('zero');
+        perSec = 0;
+        burnStart = null;
+        return;
+      }
+
+      const hourly = salary / HOURS_MONTH;
+      perSec = hourly / 3600;
+      const perMin = perSec * 60;
+
+      perSecEl.textContent = format(perSec) + ' ₽';
+      perMinEl.textContent = format(perMin) + ' ₽';
+      perHourEl.textContent = format(hourly) + ' ₽';
+
+      burnEl.classList.remove('zero');
+      burnStart = burnStart ?? Date.now();
+    }
+
+    function tick() {
+      if (perSec > 0 && burnStart) {
+        const elapsed = (Date.now() - burnStart) / 1000;
+        burnAccum = perSec * elapsed;
+        burnEl.textContent = format(burnAccum) + ' ₽';
+      }
+    }
+
+    salaryEl.addEventListener('input', () => {
+      burnStart = null;
+      burnAccum = 0;
+      update();
+    });
+
+    update();
+    setInterval(tick, 100);
+  </script>
+</body>
+</html>
