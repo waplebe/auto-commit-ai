@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Куб</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background: #020204;
+      font-family: "SF Pro Display", system-ui, sans-serif;
+      color: #fff;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    .ui {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 10;
+    }
+    .ui > * { pointer-events: auto; }
+    .top {
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .title {
+      font-size: 0.7rem;
+      font-weight: 400;
+      letter-spacing: 0.5em;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+    }
+    .result {
+      margin-top: 1.25rem;
+      font-size: 1.75rem;
+      font-weight: 500;
+      color: #fff;
+      min-height: 2.5rem;
+      text-shadow: 0 0 40px rgba(255,255,255,0.3);
+      transition: opacity 0.5s;
+    }
+    .result.reveal { animation: pulse 0.8s ease; }
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0; }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .bottom {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    .throw-btn {
+      padding: 1rem 2.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      border: none;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+      backdrop-filter: blur(10px);
+      color: #fff;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .throw-btn:hover {
+      background: linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1));
+      transform: translateY(-2px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    }
+    .throw-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .hint {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 0.1em;
+    }
+    .lang {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.25rem;
+    }
+    .lang button {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.7rem;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: transparent;
+      color: rgba(255,255,255,0.5);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .lang button.active { color: #fff; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div class="ui">
+    <div class="lang">
+      <button type="button" data-lang="ru" class="active">RU</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+    <div class="top">
+      <div class="title" id="title">Куб</div>
+      <div class="result" id="result"></div>
+    </div>
+    <div class="bottom">
+      <button type="button" class="throw-btn" id="throwBtn">Бросить</button>
+      <div class="hint" id="hint">Потяни — вращай · Брось — узнай</div>
+    </div>
+  </div>
+
+  <script>
+    const FACES_RU = ["Работай", "Отдыхай", "Вода", "Дыши", "Встань", "Музыка"];
+    const FACES_EN = ["Work", "Rest", "Water", "Breathe", "Stand", "Music"];
+    const ICONS = ["◆", "◇", "○", "◎", "▣", "♪"];
+    // Three.js BoxGeometry: 0=+x right, 1=-x left, 2=+y top, 3=-y bottom, 4=+z front, 5=-z back
+    const FACE_NORMALS = [[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1]];
+
+    let lang = localStorage.getItem("cube-lang") || "ru";
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x020204, 0.04);
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("canvas"), antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x020204);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(5, 8, 5);
+    light.castShadow = true;
+    light.shadow.mapSize.width = 512;
+    light.shadow.mapSize.height = 512;
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x6688ff, 0.15));
+
+    const cube = new THREE.Group();
+    const geo = new THREE.BoxGeometry(1.3, 1.3, 1.3);
+    const canvases = [];
+    const faceColors = [0x22c55e, 0x3b82f6, 0xf59e0b, 0xec4899, 0x8b5cf6, 0x06b6d4];
+    for (let i = 0; i < 6; i++) {
+      const c = document.createElement("canvas");
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext("2d");
+      const grad = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+      grad.addColorStop(0, "rgba(255,255,255,0.95)");
+      grad.addColorStop(0.5, "rgba(255,255,255,0.85)");
+      grad.addColorStop(1, "rgba(255,255,255,0.6)");
+      ctx.fillStyle = "#0c0c12";
+      ctx.fillRect(0, 0, 512, 512);
+      ctx.strokeStyle = "rgba(255,255,255,0.2)";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(16, 16, 480, 480);
+      ctx.fillStyle = grad;
+      ctx.font = "bold 100px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(ICONS[i], 256, 180);
+      ctx.font = "36px system-ui";
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.fillText((lang === "ru" ? FACES_RU : FACES_EN)[i], 256, 310);
+      canvases.push(c);
+    }
+    const mats = canvases.map(c => new THREE.MeshStandardMaterial({
+      map: new THREE.CanvasTexture(c),
+      roughness: 0.4,
+      metalness: 0.1,
+      emissive: 0x111118,
+    }));
+    const faceMesh = new THREE.Mesh(geo, mats);
+    faceMesh.castShadow = true;
+    faceMesh.receiveShadow = true;
+    cube.add(faceMesh);
+    const edges = new THREE.EdgesGeometry(geo, 15);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+    const wireframe = new THREE.LineSegments(edges, lineMat);
+    cube.add(wireframe);
+    cube.rotation.set(0.35, 0.55, 0);
+    scene.add(cube);
+
+    const ringGeo = new THREE.RingGeometry(2, 2.4, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.06,
+      side: THREE.DoubleSide
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = -0.8;
+    scene.add(ring);
+
+    const starCount = 1200;
+    const starPos = new Float32Array(starCount * 3);
+    const starSizes = new Float32Array(starCount);
+    for (let i = 0; i < starCount; i++) {
+      starPos[i*3] = (Math.random() - 0.5) * 300;
+      starPos[i*3+1] = (Math.random() - 0.5) * 300;
+      starPos[i*3+2] = (Math.random() - 0.5) * 300;
+      starSizes[i] = Math.random() * 1.5 + 0.3;
+    }
+    const starsGeom = new THREE.BufferGeometry();
+    starsGeom.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    starsGeom.setAttribute("size", new THREE.BufferAttribute(starSizes, 1));
+    const starsMat = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 1.2,
+      transparent: true,
+      opacity: 0.6,
+      sizeAttenuation: true
+    });
+    const stars = new THREE.Points(starsGeom, starsMat);
+    scene.add(stars);
+
+    camera.position.set(0, 0, 5.5);
+    camera.lookAt(0, 0, 0);
+
+    let isDragging = false, prevX = 0, prevY = 0;
+    let targetRotX = cube.rotation.x, targetRotY = cube.rotation.y;
+    let isThrowing = false;
+    let throwVel = { x: 0, y: 0 };
+
+    function resize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    const canvas = document.getElementById("canvas");
+    canvas.addEventListener("mousedown", e => {
+      if (isThrowing) return;
+      isDragging = true;
+      prevX = e.clientX;
+      prevY = e.clientY;
+    });
+    addEventListener("mousemove", e => {
+      if (!isDragging || isThrowing) return;
+      targetRotY += (e.clientX - prevX) * 0.008;
+      targetRotX += (e.clientY - prevY) * 0.008;
+      targetRotX = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, targetRotX));
+      prevX = e.clientX;
+      prevY = e.clientY;
+    });
+    addEventListener("mouseup", () => { isDragging = false; });
+    canvas.addEventListener("touchstart", e => {
+      if (isThrowing) return;
+      isDragging = true;
+      prevX = e.touches[0].clientX;
+      prevY = e.touches[0].clientY;
+    }, { passive: true });
+    addEventListener("touchmove", e => {
+      if (!isDragging || isThrowing) return;
+      targetRotY += (e.touches[0].clientX - prevX) * 0.008;
+      targetRotX += (e.touches[0].clientY - prevY) * 0.008;
+      targetRotX = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, targetRotX));
+      prevX = e.touches[0].clientX;
+      prevY = e.touches[0].clientY;
+    }, { passive: true });
+    addEventListener("touchend", () => { isDragging = false; });
+
+    function getTopFace() {
+      let best = 0, bestDot = -1;
+      for (let i = 0; i < 6; i++) {
+        const n = new THREE.Vector3(...FACE_NORMALS[i]).applyQuaternion(cube.quaternion);
+        const dot = n.dot(new THREE.Vector3(0, 1, 0));
+        if (dot > bestDot) { bestDot = dot; best = i; }
+      }
+      return best;
+    }
+
+    throwBtn.addEventListener("click", () => {
+      if (isThrowing) return;
+      isThrowing = true;
+      throwBtn.disabled = true;
+      result.textContent = "";
+      result.classList.remove("reveal");
+      throwVel = {
+        x: (Math.random() - 0.5) * 1.5 + (Math.random() - 0.5) * 3,
+        y: (Math.random() - 0.5) * 1.5 + (Math.random() - 0.5) * 3
+      };
+      function animateThrow() {
+        cube.rotation.x += throwVel.x * 0.04;
+        cube.rotation.y += throwVel.y * 0.04;
+        throwVel.x *= 0.94;
+        throwVel.y *= 0.94;
+        if (Math.abs(throwVel.x) < 0.005 && Math.abs(throwVel.y) < 0.005) {
+          isThrowing = false;
+          throwBtn.disabled = false;
+          const face = getTopFace();
+          const labels = lang === "ru" ? FACES_RU : FACES_EN;
+          result.textContent = labels[face];
+          result.classList.add("reveal");
+          return;
+        }
+        requestAnimationFrame(animateThrow);
+      }
+      animateThrow();
+    });
+
+    document.querySelectorAll(".lang button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        lang = btn.dataset.lang;
+        localStorage.setItem("cube-lang", lang);
+        document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("active", b.dataset.lang === lang));
+        title.textContent = lang === "ru" ? "Куб" : "Cube";
+        throwBtn.textContent = lang === "ru" ? "Бросить" : "Throw";
+        hint.textContent = lang === "ru" ? "Потяни — вращай · Брось — узнай" : "Drag to rotate · Throw to decide";
+        for (let i = 0; i < 6; i++) {
+          const ctx = canvases[i].getContext("2d");
+          ctx.clearRect(0, 0, 512, 512);
+          ctx.fillStyle = "#0c0c12";
+          ctx.fillRect(0, 0, 512, 512);
+          ctx.strokeStyle = "rgba(255,255,255,0.2)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(16, 16, 480, 480);
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.font = "bold 100px system-ui";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(ICONS[i], 256, 180);
+          ctx.font = "36px system-ui";
+          ctx.fillStyle = "rgba(255,255,255,0.8)";
+          ctx.fillText((lang === "ru" ? FACES_RU : FACES_EN)[i], 256, 310);
+          mats[i].map.needsUpdate = true;
+        }
+      });
+    });
+
+    const title = document.getElementById("title");
+    const result = document.getElementById("result");
+    const hint = document.getElementById("hint");
+    const throwBtn = document.getElementById("throwBtn");
+
+    function animate() {
+      if (!isThrowing) {
+        cube.rotation.x += (targetRotX - cube.rotation.x) * 0.08;
+        cube.rotation.y += (targetRotY - cube.rotation.y) * 0.08;
+      }
+      ring.rotation.z += 0.002;
+      stars.rotation.y += 0.00015;
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>
