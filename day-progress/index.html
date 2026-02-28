@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Прогресс дня</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg-dark: #0d0e14;
+      --bg-mid: #141620;
+      --surface: #1a1c28;
+      --surface-raised: #22242f;
+      --border: #2a2d3a;
+      --text: #f4f4f5;
+      --muted: #71717a;
+      --accent-start: #f97316;
+      --accent-end: #ec4899;
+      --glow: rgba(249, 115, 22, 0.35);
+      --shadow-soft: 4px 4px 12px rgba(0,0,0,0.4), -2px -2px 8px rgba(255,255,255,0.02);
+      --shadow-inset: inset 2px 2px 6px rgba(0,0,0,0.3);
+      --shadow-glow: 0 0 30px rgba(249, 115, 22, 0.15);
+    }
+
+    html { font-size: 16px; }
+    
+    body {
+      font-family: 'Manrope', -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* Landscape-style background */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: 
+        radial-gradient(ellipse 120% 80% at 50% 20%, rgba(249, 115, 22, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse 100% 100% at 70% 80%, rgba(236, 72, 153, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, #1a1d2e 0%, #141620 40%, #0d0e14 100%);
+    }
+
+    /* Mountain silhouettes */
+    .mountains {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 45%;
+      z-index: 1;
+      opacity: 0.15;
+      background: 
+        linear-gradient(165deg, transparent 50%, #1a1c28 50.5%) 0% 100% / 33% 60% no-repeat,
+        linear-gradient(150deg, transparent 45%, #22242f 45.5%) 20% 100% / 40% 75% no-repeat,
+        linear-gradient(160deg, transparent 55%, #1a1c28 55.5%) 60% 100% / 35% 55% no-repeat,
+        linear-gradient(155deg, transparent 50%, #22242f 50.5%) 85% 100% / 30% 65% no-repeat;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      padding: 1.5rem;
+      max-width: 520px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .lang-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.2rem;
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 0.3rem;
+      box-shadow: var(--shadow-soft);
+    }
+    .lang-toggle button {
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.4rem 0.65rem;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .lang-toggle button:hover { color: var(--text); }
+    .lang-toggle button.active {
+      background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+      color: #fff;
+      box-shadow: var(--shadow-glow);
+    }
+
+    /* Main circular progress */
+    .progress-ring-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .progress-ring {
+      width: 200px;
+      height: 200px;
+      position: relative;
+      margin-bottom: 1rem;
+    }
+
+    .progress-ring svg {
+      transform: rotate(-90deg);
+      filter: drop-shadow(0 0 20px rgba(249, 115, 22, 0.2));
+    }
+
+    .progress-ring-bg {
+      stroke: var(--border);
+      stroke-width: 10;
+      fill: none;
+    }
+
+    .progress-ring-fill {
+      stroke: url(#gradient);
+      stroke-width: 10;
+      fill: none;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s ease-out;
+    }
+
+    .progress-value {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .progress-value .percent {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .progress-value .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-top: 0.25rem;
+    }
+
+    /* Cards row */
+    .cards-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 1.25rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(255,255,255,0.03);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-soft), var(--shadow-glow);
+    }
+
+    .card.accent {
+      background: linear-gradient(145deg, rgba(249, 115, 22, 0.15) 0%, rgba(236, 72, 153, 0.08) 100%);
+      border-color: rgba(249, 115, 22, 0.3);
+    }
+
+    .card-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.35rem;
+    }
+
+    .card-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .card.accent .card-value {
+      background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Time display */
+    .time-block {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(255,255,255,0.03);
+      margin-bottom: 1rem;
+    }
+
+    .time-display {
+      font-size: 3rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .time-date {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    /* Phase indicator */
+    .phase-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .phase-item {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      transition: background 0.3s;
+    }
+
+    .phase-item.active {
+      background: linear-gradient(90deg, var(--accent-start), var(--accent-end));
+      box-shadow: 0 0 12px var(--glow);
+    }
+
+    .phase-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .footer a {
+      color: var(--accent-start);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="mountains"></div>
+
+  <div class="content">
+    <div class="lang-toggle">
+      <button type="button" data-lang="ru" class="active">RU</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+
+    <div class="progress-ring-wrap">
+      <div class="progress-ring">
+        <svg width="200" height="200" viewBox="0 0 200 200">
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f97316"/>
+              <stop offset="100%" stop-color="#ec4899"/>
+            </linearGradient>
+          </defs>
+          <circle class="progress-ring-bg" cx="100" cy="100" r="90"/>
+          <circle class="progress-ring-fill" id="progressCircle" cx="100" cy="100" r="90"
+            stroke-dasharray="565.48" stroke-dashoffset="565.48"/>
+        </svg>
+        <div class="progress-value">
+          <span class="percent" id="percent">0</span>
+          <span class="label" id="progressLabel">дня прошло</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="time-block">
+      <div class="time-display" id="time">00:00</div>
+      <div class="time-date" id="date">—</div>
+      <div class="phase-bar">
+        <div class="phase-item" data-phase="0" title="Ночь"></div>
+        <div class="phase-item" data-phase="1" title="Утро"></div>
+        <div class="phase-item" data-phase="2" title="День"></div>
+        <div class="phase-item" data-phase="3" title="Вечер"></div>
+      </div>
+      <div class="phase-labels">
+        <span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+      </div>
+    </div>
+
+    <div class="cards-row">
+      <div class="card">
+        <div class="card-label" data-i18n="leftLabel">Осталось сегодня</div>
+        <div class="card-value" id="hoursLeft">—</div>
+      </div>
+      <div class="card accent">
+        <div class="card-label" data-i18n="phaseLabel">Сейчас</div>
+        <div class="card-value" id="phase">—</div>
+      </div>
+    </div>
+
+    <p class="footer">
+      <a href="https://github.com/waplebe/auto-commit-ai">Source</a>
+    </p>
+  </div>
+
+  <script>
+    const i18n = {
+      ru: {
+        progressLabel: 'дня прошло',
+        leftLabel: 'Осталось сегодня',
+        phaseLabel: 'Сейчас',
+        night: 'Ночь',
+        morning: 'Утро',
+        afternoon: 'День',
+        evening: 'Вечер',
+        hours: 'ч',
+        mins: 'мин'
+      },
+      en: {
+        progressLabel: 'of day passed',
+        leftLabel: 'Left today',
+        phaseLabel: 'Now',
+        night: 'Night',
+        morning: 'Morning',
+        afternoon: 'Afternoon',
+        evening: 'Evening',
+        hours: 'h',
+        mins: 'min'
+      }
+    };
+
+    let lang = localStorage.getItem('day-progress-lang') || 'ru';
+
+    const circumference = 2 * Math.PI * 90;
+
+    function getPhase(hour) {
+      if (hour >= 0 && hour < 6) return 0;
+      if (hour >= 6 && hour < 12) return 1;
+      if (hour >= 12 && hour < 18) return 2;
+      return 3;
+    }
+
+    function getPhaseName(phase) {
+      const names = ['night', 'morning', 'afternoon', 'evening'];
+      return i18n[lang][names[phase]];
+    }
+
+    function update() {
+      const now = new Date();
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(now);
+      end.setHours(23, 59, 59, 999);
+      const passed = (now - start) / (end - start);
+      const percent = Math.round(passed * 100);
+
+      const circle = document.getElementById('progressCircle');
+      circle.style.strokeDashoffset = circumference - passed * circumference;
+
+      document.getElementById('percent').textContent = percent + '%';
+      document.getElementById('progressLabel').textContent = i18n[lang].progressLabel;
+
+      const h = now.getHours();
+      const m = now.getMinutes();
+      document.getElementById('time').textContent =
+        String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+
+      const dateOpts = lang === 'en'
+        ? { weekday: 'short', day: 'numeric', month: 'short' }
+        : { weekday: 'short', day: 'numeric', month: 'short' };
+      document.getElementById('date').textContent =
+        now.toLocaleDateString(lang === 'en' ? 'en-US' : 'ru-RU', dateOpts);
+
+      const phase = getPhase(h);
+      document.querySelectorAll('.phase-item').forEach((el, i) => {
+        el.classList.toggle('active', i === phase);
+      });
+      document.getElementById('phase').textContent = getPhaseName(phase);
+
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 0, 0);
+      const minsLeft = Math.max(0, Math.round((endOfDay - now) / 60000));
+      const hrs = Math.floor(minsLeft / 60);
+      const mins = minsLeft % 60;
+      const t = i18n[lang];
+      document.getElementById('hoursLeft').textContent =
+        hrs > 0 ? `${hrs} ${t.hours} ${mins} ${t.mins}` : `${mins} ${t.mins}`;
+    }
+
+    function applyLang() {
+      document.documentElement.lang = lang === 'en' ? 'en' : 'ru';
+      document.title = lang === 'en' ? 'Day Progress' : 'Прогресс дня';
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.dataset.i18n;
+        if (i18n[lang][k]) el.textContent = i18n[lang][k];
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+      update();
+    }
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        lang = btn.dataset.lang;
+        localStorage.setItem('day-progress-lang', lang);
+        applyLang();
+      });
+    });
+
+    applyLang();
+    setInterval(update, 1000);
+  </script>
+</body>
+</html>
