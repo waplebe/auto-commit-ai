@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Focus Room — комната для фокуса</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0c0f;
+      --surface: #16161a;
+      --surface-hover: #1c1c22;
+      --border: #2a2a32;
+      --text: #f4f4f5;
+      --muted: #71717a;
+      --accent: #22c55e;
+      --accent-dim: rgba(34, 197, 94, 0.2);
+      --danger: #ef4444;
+      --warn: #f59e0b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .app {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .header-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .stats-bar {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .stat strong { color: var(--text); font-weight: 600; }
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 2rem;
+      flex: 1;
+    }
+    @media (max-width: 768px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+    .panel h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+    .timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+    .timer-ring {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin-bottom: 1.5rem;
+    }
+    .timer-ring svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+    .timer-ring .bg { stroke: var(--border); stroke-width: 6; fill: none; }
+    .timer-ring .progress {
+      stroke: var(--accent);
+      stroke-width: 6;
+      fill: none;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s linear;
+    }
+    .timer-ring .progress.break { stroke: var(--warn); }
+    .timer-ring .progress.danger { stroke: var(--danger); }
+    .timer-display {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .timer-display .time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.5rem;
+      font-weight: 500;
+    }
+    .timer-display .mode {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+    .timer-controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .btn {
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+    }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-secondary {
+      background: var(--surface-hover);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--muted); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .task-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+    .task-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+    .task-input::placeholder { color: var(--muted); }
+    .sounds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 0.75rem;
+    }
+    .sound-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .sound-card:hover { border-color: var(--muted); }
+    .sound-card.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .sound-card .icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .sound-card .label { font-size: 0.8rem; color: var(--text); }
+    .sound-card .slider-wrap {
+      margin-top: 0.5rem;
+      display: none;
+    }
+    .sound-card.active .slider-wrap { display: block; }
+    .sound-card input[type="range"] {
+      width: 100%;
+      height: 4px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .sessions-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .session-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .session-item:last-child { border-bottom: none; }
+    .session-item .task { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .session-item .dur { font-family: 'JetBrains Mono', monospace; color: var(--muted); margin-left: 0.5rem; }
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .focus-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .focus-overlay.active { display: flex; }
+    .focus-overlay .big-timer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(4rem, 15vw, 8rem);
+      font-weight: 500;
+      color: var(--text);
+    }
+    .focus-overlay .big-task {
+      font-size: 1.25rem;
+      color: var(--muted);
+      margin-top: 1rem;
+      max-width: 400px;
+      text-align: center;
+    }
+    .focus-overlay .exit-btn {
+      margin-top: 3rem;
+      padding: 0.75rem 2rem;
+      font-size: 0.9rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .focus-overlay .exit-btn:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    .presets {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .preset-btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .preset-btn:hover { color: var(--text); border-color: var(--muted); }
+    footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Focus Room</h1>
+        <div class="header-meta">Звуки + таймер + задачи</div>
+      </div>
+      <div class="stats-bar">
+        <div class="stat"><span>Сегодня:</span> <strong id="todayMins">0</strong> мин</div>
+        <div class="stat"><span>Сессий:</span> <strong id="todaySessions">0</strong></div>
+        <div class="stat"><span>Стрик:</span> <strong id="streak">0</strong> дней</div>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <div>
+        <div class="panel">
+          <h2>Таймер</h2>
+          <div class="timer-wrap">
+            <div class="timer-ring">
+              <svg viewBox="0 0 100 100">
+                <circle class="bg" cx="50" cy="50" r="45" />
+                <circle class="progress" id="timerProgress" cx="50" cy="50" r="45"
+                  stroke-dasharray="282.7" stroke-dashoffset="0" />
+              </svg>
+              <div class="timer-display">
+                <span class="time" id="timerTime">25:00</span>
+                <span class="mode" id="timerMode">Фокус</span>
+              </div>
+            </div>
+            <div class="timer-controls">
+              <button type="button" class="btn btn-primary" id="startBtn">Старт</button>
+              <button type="button" class="btn btn-secondary" id="resetBtn">Сброс</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 1.5rem;">
+          <h2>Задача</h2>
+          <input type="text" class="task-input" id="taskInput" placeholder="Над чем работаешь?">
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h2>Звуки</h2>
+          <div class="presets">
+            <button type="button" class="preset-btn" data-preset="rain">Дождь</button>
+            <button type="button" class="preset-btn" data-preset="cafe">Кафе</button>
+            <button type="button" class="preset-btn" data-preset="focus">Фокус</button>
+            <button type="button" class="preset-btn" data-preset="off">Выкл</button>
+          </div>
+          <div class="sounds-grid" id="soundsGrid"></div>
+        </div>
+
+        <div class="panel" style="margin-top: 1.5rem;">
+          <h2>Сегодня</h2>
+          <div class="sessions-list" id="sessionsList">
+            <div class="empty-state">Нет завершённых сессий</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/waplebe/auto-commit-ai">Исходный код</a> · Один файл, работает везде
+    </footer>
+  </div>
+
+  <div class="focus-overlay" id="focusOverlay">
+    <div class="big-timer" id="focusTimer">25:00</div>
+    <div class="big-task" id="focusTask">—</div>
+    <button type="button" class="exit-btn" id="exitFocusBtn">Выйти</button>
+  </div>
+
+  <script>
+(function() {
+  const SOUNDS = [
+    { id: 'white', label: 'Белый шум', icon: '◯' },
+    { id: 'pink', label: 'Розовый', icon: '◎' },
+    { id: 'brown', label: 'Коричневый', icon: '●' },
+    { id: 'rain', label: 'Дождь', icon: '🌧' },
+    { id: 'stream', label: 'Ручей', icon: '〰' },
+  ];
+
+  const PRESETS = {
+    rain: { rain: 80, brown: 20 },
+    cafe: { brown: 70, pink: 30 },
+    focus: { brown: 60, white: 40 },
+    off: {},
+  };
+
+  let audioCtx = null;
+  const nodes = {};
+  let isPlaying = {};
+
+  function getAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+
+  function createWhiteNoise() {
+    const ctx = getAudioContext();
+    const bufferSize = 2 * ctx.sampleRate;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    return source;
+  }
+
+  function createPinkNoise() {
+    const ctx = getAudioContext();
+    const bufferSize = 4096;
+    let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+    const proc = ctx.createScriptProcessor ? ctx.createScriptProcessor(bufferSize, 1, 1) : null;
+    if (!proc) return null;
+    proc.onaudioprocess = e => {
+      const out = e.outputBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        out[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+      }
+    };
+    return proc;
+  }
+
+  const audioState = {};
+  SOUNDS.forEach(s => { audioState[s.id] = { on: false, vol: 0.5 }; });
+
+  function toggleSound(id, on, vol) {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+    if (!nodes[id]) {
+      if (id === 'white') {
+        const src = createWhiteNoise();
+        src.start(0);
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        src.connect(gain);
+        gain.connect(ctx.destination);
+        nodes[id] = { gain };
+      } else if (id === 'brown') {
+        const src = createWhiteNoise();
+        src.start(0);
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 150;
+        src.connect(filter);
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        nodes[id] = { gain };
+      } else if (id === 'pink') {
+        const osc = ctx.createOscillator();
+        osc.frequency.value = 0;
+        const proc = createPinkNoise();
+        osc.connect(proc);
+        proc.connect(ctx.destination);
+        osc.start(0);
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        proc.disconnect();
+        proc.connect(gain);
+        gain.connect(ctx.destination);
+        nodes[id] = { gain };
+      } else if (id === 'pink') {
+        const proc = createPinkNoise();
+        const osc = ctx.createOscillator();
+        osc.frequency.value = 0;
+        osc.connect(proc);
+        osc.start(0);
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        proc.connect(gain);
+        gain.connect(ctx.destination);
+        nodes[id] = { gain };
+      } else if (id === 'rain') {
+        const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.25;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        const filt = ctx.createBiquadFilter();
+        filt.type = 'lowpass';
+        filt.frequency.value = 700;
+        src.connect(filt);
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        filt.connect(gain);
+        gain.connect(ctx.destination);
+        src.start(0);
+        nodes[id] = { gain };
+      } else if (id === 'stream') {
+        const src = createWhiteNoise();
+        src.start(0);
+        const filt = ctx.createBiquadFilter();
+        filt.type = 'bandpass';
+        filt.frequency.value = 400;
+        filt.Q.value = 0.5;
+        src.connect(filt);
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        filt.connect(gain);
+        gain.connect(ctx.destination);
+        nodes[id] = { gain };
+      }
+    }
+    if (nodes[id] && nodes[id].gain) {
+      nodes[id].gain.gain.cancelScheduledValues(ctx.currentTime);
+      nodes[id].gain.gain.linearRampToValueAtTime(on ? (vol ?? 0.5) * 0.15 : 0, ctx.currentTime + 0.1);
+    }
+    audioState[id] = { on: !!on, vol: vol ?? audioState[id]?.vol ?? 0.5 };
+  }
+
+  const timer = {
+    totalSec: 25 * 60,
+    leftSec: 25 * 60,
+    mode: 'focus',
+    interval: null,
+    circumference: 2 * Math.PI * 45,
+  };
+  const MODES = { focus: 25 * 60, short: 5 * 60, long: 15 * 60 };
+
+  const progressEl = document.getElementById('timerProgress');
+  const timeEl = document.getElementById('timerTime');
+  const modeEl = document.getElementById('timerMode');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const taskInput = document.getElementById('taskInput');
+  const focusOverlay = document.getElementById('focusOverlay');
+  const focusTimer = document.getElementById('focusTimer');
+  const focusTask = document.getElementById('focusTask');
+  const exitFocusBtn = document.getElementById('exitFocusBtn');
+  const todayMins = document.getElementById('todayMins');
+  const todaySessions = document.getElementById('todaySessions');
+  const streakEl = document.getElementById('streak');
+  const sessionsList = document.getElementById('sessionsList');
+
+  function fmt(t) {
+    const m = Math.floor(t / 60), s = t % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  function updateTimerUI() {
+    const p = timer.leftSec / timer.totalSec;
+    progressEl.style.strokeDashoffset = (1 - p) * timer.circumference;
+    timeEl.textContent = fmt(timer.leftSec);
+    modeEl.textContent = timer.mode === 'focus' ? 'Фокус' : timer.mode === 'short' ? 'Перерыв' : 'Длинный перерыв';
+    progressEl.classList.toggle('break', timer.mode !== 'focus');
+    progressEl.classList.toggle('danger', timer.mode === 'focus' && p < 0.2);
+    if (focusOverlay.classList.contains('active')) focusTimer.textContent = fmt(timer.leftSec);
+  }
+
+  function tick() {
+    timer.leftSec--;
+    updateTimerUI();
+    if (timer.leftSec <= 0) {
+      clearInterval(timer.interval);
+      timer.interval = null;
+      startBtn.textContent = 'Старт';
+      if (timer.mode === 'focus') {
+        saveSession(taskInput.value || 'Фокус', timer.totalSec);
+        updateStats();
+        timer.mode = 'short';
+        timer.totalSec = MODES.short;
+      } else {
+        timer.mode = 'focus';
+        timer.totalSec = MODES.focus;
+      }
+      timer.leftSec = timer.totalSec;
+      updateTimerUI();
+      focusOverlay.classList.remove('active');
+    }
+  }
+
+  function saveSession(task, sec) {
+    const key = 'focus-room-sessions';
+    const sessions = JSON.parse(localStorage.getItem(key) || '[]');
+    const today = new Date().toDateString();
+    sessions.push({ task, mins: Math.round(sec / 60), date: today });
+    localStorage.setItem(key, JSON.stringify(sessions));
+  }
+
+  function updateStats() {
+    const key = 'focus-room-sessions';
+    const sessions = JSON.parse(localStorage.getItem(key) || '[]');
+    const today = new Date().toDateString();
+    const todayData = sessions.filter(s => s.date === today);
+    const totalMins = todayData.reduce((a, s) => a + s.mins, 0);
+    todayMins.textContent = totalMins;
+    todaySessions.textContent = todayData.length;
+    const days = [...new Set(sessions.map(s => s.date))].sort().reverse();
+    let str = 0;
+    const oneDay = 86400000;
+    for (let i = 0; i < days.length; i++) {
+      const d = new Date(days[i]).getTime();
+      const prev = i > 0 ? new Date(days[i - 1]).getTime() : d + oneDay;
+      if (prev - d > oneDay * 1.5) break;
+      str++;
+    }
+    streakEl.textContent = str;
+    sessionsList.innerHTML = todayData.length ? todayData.slice().reverse().map(s =>
+      `<div class="session-item"><span class="task">${s.task || '—'}</span><span class="dur">${s.mins} мин</span></div>`
+    ).join('') : '<div class="empty-state">Нет завершённых сессий</div>';
+  }
+
+  startBtn.addEventListener('click', () => {
+    if (timer.interval) {
+      clearInterval(timer.interval);
+      timer.interval = null;
+      startBtn.textContent = 'Старт';
+      focusOverlay.classList.remove('active');
+    } else {
+      timer.interval = setInterval(tick, 1000);
+      startBtn.textContent = 'Стоп';
+      focusOverlay.classList.add('active');
+      focusTask.textContent = taskInput.value || '—';
+    }
+  });
+  resetBtn.addEventListener('click', () => {
+    if (timer.interval) clearInterval(timer.interval);
+    timer.interval = null;
+    timer.mode = 'focus';
+    timer.totalSec = MODES.focus;
+    timer.leftSec = MODES.focus;
+    startBtn.textContent = 'Старт';
+    focusOverlay.classList.remove('active');
+    updateTimerUI();
+  });
+  exitFocusBtn.addEventListener('click', () => {
+    if (timer.interval) clearInterval(timer.interval);
+    timer.interval = null;
+    startBtn.textContent = 'Старт';
+    focusOverlay.classList.remove('active');
+  });
+
+  const soundsGrid = document.getElementById('soundsGrid');
+  SOUNDS.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'sound-card';
+    card.dataset.id = s.id;
+    card.innerHTML = `
+      <div class="icon">${s.icon}</div>
+      <div class="label">${s.label}</div>
+      <div class="slider-wrap"><input type="range" min="0" max="100" value="50"></div>
+    `;
+    const slider = card.querySelector('input[type="range"]');
+    card.addEventListener('click', () => {
+      const on = !card.classList.contains('active');
+      card.classList.toggle('active', on);
+      toggleSound(s.id, on, slider.value / 100);
+      if (!on) slider.value = 50;
+    });
+    slider.addEventListener('input', e => {
+      if (card.classList.contains('active')) toggleSound(s.id, true, e.target.value / 100);
+    });
+    slider.addEventListener('click', e => e.stopPropagation());
+    soundsGrid.appendChild(card);
+  });
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = PRESETS[btn.dataset.preset] || {};
+      document.querySelectorAll('.sound-card').forEach(card => {
+        const id = card.dataset.id;
+        const vol = p[id] !== undefined ? p[id] / 100 : 0;
+        card.classList.toggle('active', vol > 0);
+        const sl = card.querySelector('input[type="range"]');
+        if (sl) sl.value = vol * 100;
+        toggleSound(id, vol > 0, vol || 0.5);
+      });
+    });
+  });
+
+  updateStats();
+  updateTimerUI();
+})();
+  </script>
+</body>
+</html>
