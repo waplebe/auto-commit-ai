@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Life Horizon — время и фокус</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0b0f;
+      --surface: #12141a;
+      --surface-2: #161922;
+      --border: rgba(255,255,255,0.06);
+      --text: #e4e4e7;
+      --muted: #52525b;
+      --orange: #f97316;
+      --orange-glow: rgba(249, 115, 22, 0.35);
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --red: #ef4444;
+      --purple: #a855f7;
+      --yellow: #eab308;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .app {
+      min-height: 100vh;
+      padding: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--orange), var(--yellow));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+    .header .tagline {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      position: relative;
+    }
+    .card-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    /* Horizon - the main metaphor */
+    .horizon {
+      grid-column: 1 / -1;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .horizon-wrap { position: relative; margin: 1rem 0; }
+    .horizon-line {
+      height: 8px;
+      background: linear-gradient(90deg, var(--green) 0%, var(--orange) 50%, var(--border) 50%, var(--border) 100%);
+      background-size: 200% 100%;
+      background-position: 0 0;
+      border-radius: 4px;
+      box-shadow: 0 0 20px var(--orange-glow);
+      margin: 1rem 0;
+      transition: background-position 0.8s ease;
+    }
+    .horizon-you {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      background: var(--orange);
+      border-radius: 50%;
+      box-shadow: 0 0 30px var(--orange-glow), 0 0 60px rgba(249,115,22,0.2);
+      border: 3px solid var(--bg);
+      z-index: 2;
+    }
+    .horizon-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    /* Weeks lived / remaining */
+    .big-stat {
+      text-align: center;
+      padding: 1.5rem;
+    }
+    .big-stat .num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--orange);
+      text-shadow: 0 0 40px var(--orange-glow);
+      display: block;
+    }
+    .big-stat .unit {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+    .big-stat .sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      line-height: 1.4;
+    }
+
+    /* One thing today */
+    .one-thing {
+      grid-column: 1 / -1;
+    }
+    .one-thing input {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      font-size: 1.1rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .one-thing input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+    }
+    .one-thing input::placeholder {
+      color: var(--muted);
+    }
+    .one-thing .hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+
+    /* Good thing */
+    .good-thing {
+      grid-column: 1 / -1;
+    }
+    .good-thing textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 1rem;
+      font-size: 0.95rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      outline: none;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+    .good-thing textarea:focus { border-color: var(--green); }
+    .good-thing textarea::placeholder { color: var(--muted); }
+
+    /* Quote/philosophy */
+    .quote {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 1rem;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.6;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>Life Horizon</h1>
+      <p class="tagline">Время проходит. Куда направлен твой фокус?</p>
+    </header>
+
+    <div class="grid">
+      <!-- The horizon - past (green) / future (grey), you are NOW (orange dot) -->
+      <div class="card horizon">
+        <div class="card-label">Твоя линия</div>
+        <div class="horizon-wrap">
+          <div class="horizon-line" id="horizonLine"></div>
+          <div class="horizon-you" id="horizonYou"></div>
+        </div>
+        <div class="horizon-labels">
+          <span>Рождение</span>
+          <span>Сейчас</span>
+          <span>Ориентир</span>
+        </div>
+      </div>
+
+      <!-- Weeks lived -->
+      <div class="card">
+        <div class="card-label">Прожито</div>
+        <div class="big-stat">
+          <span class="num" id="weeksLived">0</span>
+          <span class="unit">недель</span>
+          <p class="sub">Одна неделя = одна клетка жизни. Больше не будет.</p>
+        </div>
+      </div>
+
+      <!-- Weeks remaining (estimate) -->
+      <div class="card">
+        <div class="card-label">Примерно осталось</div>
+        <div class="big-stat">
+          <span class="num" id="weeksLeft">0</span>
+          <span class="unit">недель</span>
+          <p class="sub">При ожидании 80 лет. Каждая неделя — выбор.</p>
+        </div>
+      </div>
+
+      <!-- One thing today -->
+      <div class="card one-thing">
+        <div class="card-label">Одна вещь на сегодня</div>
+        <input type="text" id="oneThing" placeholder="Какое одно дело сделает остальное проще или ненужным?">
+        <p class="hint">Идея из «The One Thing» — фокус на одном, а не на десятке.</p>
+      </div>
+
+      <!-- One good thing -->
+      <div class="card good-thing">
+        <div class="card-label">Что хорошего сегодня</div>
+        <textarea id="goodThing" placeholder="Один хороший момент, решение, разговор... Записывая, мы замечаем больше."></textarea>
+      </div>
+
+      <!-- Settings -->
+      <div class="card" style="grid-column: 1 / -1;">
+        <div class="card-label">Настройки</div>
+        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center;">
+          <div>
+            <label style="font-size:0.75rem; color:var(--muted);">Год рождения</label>
+            <input type="number" id="birthYear" min="1920" max="2015" value="1990" style="margin-left:0.5rem; padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.9rem;">
+          </div>
+          <div>
+            <label style="font-size:0.75rem; color:var(--muted);">Ожидаемо лет</label>
+            <input type="number" id="expectYears" min="50" max="120" value="80" style="margin-left:0.5rem; padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.9rem;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Quote -->
+      <div class="card quote">
+        <p id="quote">«Мы переоцениваем то, что можем сделать за год, и недооцениваем — за десять лет.» — Билл Гейтс</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function() {
+  const QUOTES = [
+    '«Мы переоцениваем то, что можем сделать за год, и недооцениваем — за десять лет.» — Билл Гейтс',
+    '«Дело не в том, сколько времени у тебя есть. Дело в том, сколько времени ты создаёшь.»',
+    '«Не откладывай на завтра то, что можешь сделать послезавтра.» — Марк Твен (иронично)',
+    '«Два самых важных дня в жизни: день, когда ты родился, и день, когда понял зачем.» — Марк Твен',
+  ];
+  let quoteIdx = Math.floor(Math.random() * QUOTES.length);
+  document.getElementById('quote').textContent = QUOTES[quoteIdx];
+
+  const birthYear = parseInt(localStorage.getItem('life-horizon-birth') || '1990', 10);
+  const expectYears = parseInt(localStorage.getItem('life-horizon-expect') || '80', 10);
+
+  function compute() {
+    const now = new Date();
+    const birth = new Date(birthYear, 0, 1);
+    const weeksLived = Math.floor((now - birth) / (7 * 24 * 60 * 60 * 1000));
+    const totalWeeks = expectYears * 52;
+    const weeksLeft = Math.max(0, totalWeeks - weeksLived);
+    const pct = Math.min(1, weeksLived / totalWeeks);
+
+    document.getElementById('weeksLived').textContent = weeksLived.toLocaleString();
+    document.getElementById('weeksLeft').textContent = weeksLeft.toLocaleString();
+
+    const line = document.getElementById('horizonLine');
+    line.style.background = `linear-gradient(90deg, var(--green) 0%, var(--orange) ${pct * 100}%, var(--border) ${pct * 100}%, var(--border) 100%)`;
+    const you = document.getElementById('horizonYou');
+    you.style.left = (pct * 100) + '%';
+  }
+  compute();
+  setInterval(compute, 60000);
+
+  // One thing
+  const oneThing = document.getElementById('oneThing');
+  oneThing.value = localStorage.getItem('life-horizon-one') || '';
+  const today = new Date().toDateString();
+  if (localStorage.getItem('life-horizon-date') !== today) {
+    localStorage.setItem('life-horizon-date', today);
+    oneThing.value = '';
+    oneThing.placeholder = 'Новый день. Какое одно дело изменит остальное?';
+  }
+  oneThing.addEventListener('input', () => localStorage.setItem('life-horizon-one', oneThing.value));
+
+  // Good thing
+  const goodThing = document.getElementById('goodThing');
+  goodThing.value = localStorage.getItem('life-horizon-good') || '';
+  goodThing.addEventListener('input', () => localStorage.setItem('life-horizon-good', goodThing.value));
+})();
+  </script>
+</body>
+</html>
