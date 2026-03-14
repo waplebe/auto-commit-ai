@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analytics Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0b0f;
+      --surface: #12141a;
+      --surface-2: #161922;
+      --border: rgba(255,255,255,0.06);
+      --text: #e4e4e7;
+      --muted: #52525b;
+      --orange: #f97316;
+      --orange-glow: rgba(249, 115, 22, 0.4);
+      --green: #22c55e;
+      --green-glow: rgba(34, 197, 94, 0.35);
+      --blue: #3b82f6;
+      --blue-glow: rgba(59, 130, 246, 0.35);
+      --red: #ef4444;
+      --purple: #a855f7;
+      --yellow: #eab308;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .app {
+      min-height: 100vh;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      grid-template-rows: auto auto 1fr 1fr;
+      gap: 1rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    @media (max-width: 1200px) { .app { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .app { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+    }
+    .card-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+    .card-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.75rem;
+      font-weight: 600;
+    }
+
+    /* Hero - Large radial chart */
+    .hero {
+      grid-column: span 2;
+      grid-row: span 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+      min-height: 320px;
+    }
+    .hero-ring {
+      position: relative;
+      width: 220px;
+      height: 220px;
+    }
+    .hero-ring svg {
+      transform: rotate(-135deg);
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 20px var(--orange-glow));
+    }
+    .hero-ring .segment {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.6s ease;
+    }
+    .hero-ring .inner {
+      position: absolute;
+      inset: 30%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      border-radius: 50%;
+      border: 1px solid var(--border);
+    }
+    .hero-ring .inner .big {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--orange), var(--yellow));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-ring .inner .small {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+
+    /* KPI cards */
+    .kpi {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .kpi-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+    .kpi-icon.orange { background: rgba(249, 115, 22, 0.15); box-shadow: 0 0 20px var(--orange-glow); }
+    .kpi-icon.green { background: rgba(34, 197, 94, 0.15); box-shadow: 0 0 20px var(--green-glow); }
+    .kpi-icon.blue { background: rgba(59, 130, 246, 0.15); box-shadow: 0 0 20px var(--blue-glow); }
+    .kpi-icon.purple { background: rgba(168, 85, 247, 0.15); }
+    .kpi .val { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 600; }
+    .kpi .sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* Mini gauge */
+    .mini-gauge {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .mini-gauge svg {
+      width: 70px;
+      height: 70px;
+      transform: rotate(-90deg);
+      filter: drop-shadow(0 0 8px var(--green-glow));
+    }
+    .mini-gauge .ring {
+      fill: none;
+      stroke-width: 6;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+    .mini-gauge .text { font-size: 0.8rem; color: var(--muted); }
+
+    /* Bar chart row */
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .bar-row label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      min-width: 4rem;
+    }
+    .bar-track {
+      flex: 1;
+      height: 8px;
+      background: var(--surface-2);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 12px currentColor;
+    }
+    .bar-row .pct {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text);
+      min-width: 2.5rem;
+    }
+
+    /* Line chart placeholder */
+    .line-chart {
+      height: 100px;
+      position: relative;
+    }
+    .line-chart svg {
+      width: 100%;
+      height: 100%;
+    }
+    .line-chart .area {
+      fill: url(#lineGrad);
+      opacity: 0.3;
+    }
+    .line-chart .line {
+      fill: none;
+      stroke: var(--orange);
+      stroke-width: 2;
+      filter: drop-shadow(0 0 6px var(--orange-glow));
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .stat-mini {
+      background: var(--surface-2);
+      border-radius: 8px;
+      padding: 0.6rem;
+      text-align: center;
+    }
+    .stat-mini .n {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--orange);
+    }
+    .stat-mini .l { font-size: 0.6rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* Glowing numbers */
+    .glow-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2rem;
+      font-weight: 700;
+      text-shadow: 0 0 30px var(--orange-glow);
+      color: var(--orange);
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0">
+    <defs>
+      <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f97316" stop-opacity="0.6"/>
+        <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="seg1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#f97316"/>
+        <stop offset="100%" stop-color="#ea580c"/>
+      </linearGradient>
+      <linearGradient id="seg2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#22c55e"/>
+        <stop offset="100%" stop-color="#16a34a"/>
+      </linearGradient>
+      <linearGradient id="seg3" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#3b82f6"/>
+        <stop offset="100%" stop-color="#2563eb"/>
+      </linearGradient>
+      <linearGradient id="seg4" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#a855f7"/>
+        <stop offset="100%" stop-color="#9333ea"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div class="app">
+    <!-- Hero - radial gauge -->
+    <div class="card hero">
+      <div class="card-label">Overall Performance</div>
+      <div class="hero-ring">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="var(--surface-2)" stroke-width="12"/>
+          <circle class="segment" id="heroSeg" cx="50" cy="50" r="45" fill="none" stroke="url(#seg1)" stroke-dasharray="282.7" stroke-dashoffset="76"/>
+        </svg>
+        <div class="inner">
+          <span class="big" id="heroVal">73%</span>
+          <span class="small">Target: 80%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 1 -->
+    <div class="card">
+      <div class="card-label">Active Users</div>
+      <div class="kpi">
+        <div class="kpi-icon orange">👥</div>
+        <div>
+          <div class="val" id="kpi1">4,026</div>
+          <div class="sub">+12% this week</div>
+        </div>
+      </div>
+    </div>
+    <!-- KPI 2 -->
+    <div class="card">
+      <div class="card-label">Conversion</div>
+      <div class="kpi">
+        <div class="kpi-icon green">📈</div>
+        <div>
+          <div class="val" id="kpi2">36%</div>
+          <div class="sub">+2.4% vs last month</div>
+        </div>
+      </div>
+    </div>
+    <!-- KPI 3 -->
+    <div class="card">
+      <div class="card-label">Revenue</div>
+      <div class="kpi">
+        <div class="kpi-icon blue">💰</div>
+        <div>
+          <div class="val" id="kpi3">¥2.4M</div>
+          <div class="sub">Monthly run rate</div>
+        </div>
+      </div>
+    </div>
+    <!-- KPI 4 -->
+    <div class="card">
+      <div class="card-label">NPS Score</div>
+      <div class="kpi">
+        <div class="kpi-icon purple">⭐</div>
+        <div>
+          <div class="val" id="kpi4">72</div>
+          <div class="sub">Promoters</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini gauge + bar -->
+    <div class="card">
+      <div class="card-label">Capacity</div>
+      <div class="mini-gauge">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="var(--surface-2)" stroke-width="6"/>
+          <circle class="ring" id="capRing" cx="50" cy="50" r="40" fill="none" stroke="var(--green)" stroke-dasharray="251" stroke-dashoffset="75"/>
+        </svg>
+        <div>
+          <div class="val" style="color: var(--green);">78%</div>
+          <div class="text">Server load</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="card">
+      <div class="card-label">Channels</div>
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+
+    <!-- Line chart -->
+    <div class="card" style="grid-column: span 2;">
+      <div class="card-label">Trend (7 days)</div>
+      <div class="line-chart">
+        <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+          <path class="area" id="areaPath" d=""/>
+          <path class="line" id="linePath" d=""/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="card">
+      <div class="card-label">Quick Stats</div>
+      <div class="stats-grid">
+        <div class="stat-mini"><div class="n">233</div><div class="l">Orders</div></div>
+        <div class="stat-mini"><div class="n">775</div><div class="l">Sessions</div></div>
+        <div class="stat-mini"><div class="n">92%</div><div class="l">Uptime</div></div>
+        <div class="stat-mini"><div class="n">4.2</div><div class="l">Avg. rating</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Alerts</div>
+      <div class="bar-chart">
+        <div class="bar-row">
+          <label>Errors</label>
+          <div class="bar-track"><div class="bar-fill" style="width:8%; background:var(--red); color:rgba(239,68,68,0.4);"></div></div>
+          <span class="pct">8</span>
+        </div>
+        <div class="bar-row">
+          <label>Warnings</label>
+          <div class="bar-track"><div class="bar-fill" style="width:24%; background:var(--yellow); color:rgba(234,179,8,0.4);"></div></div>
+          <span class="pct">24</span>
+        </div>
+        <div class="bar-row">
+          <label>Info</label>
+          <div class="bar-track"><div class="bar-fill" style="width:68%; background:var(--blue); color:var(--blue-glow);"></div></div>
+          <span class="pct">68</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function() {
+  const barData = [
+    { label: 'Direct', pct: 42, color: '#f97316', glow: 'rgba(249,115,22,0.5)' },
+    { label: 'Organic', pct: 28, color: '#22c55e', glow: 'rgba(34,197,94,0.5)' },
+    { label: 'Referral', pct: 18, color: '#3b82f6', glow: 'rgba(59,130,246,0.5)' },
+    { label: 'Social', pct: 12, color: '#a855f7', glow: 'rgba(168,85,247,0.5)' },
+  ];
+  const barChart = document.getElementById('barChart');
+  barChart.innerHTML = barData.map(b => `
+    <div class="bar-row">
+      <label>${b.label}</label>
+      <div class="bar-track"><div class="bar-fill" style="width:${b.pct}%; background:${b.color}; box-shadow:0 0 14px ${b.glow};"></div></div>
+      <span class="pct">${b.pct}%</span>
+    </div>
+  `).join('');
+
+  const lineData = [30, 45, 38, 55, 62, 58, 73];
+  const w = 300, h = 100;
+  const px = (i) => (i / (lineData.length - 1)) * w;
+  const py = (v) => h - (v / 100) * h;
+  let lineD = lineData.map((v, i) => `${i === 0 ? 'M' : 'L'} ${px(i)} ${py(v)}`).join(' ');
+  let areaD = lineD + ` L ${px(lineData.length - 1)} ${h} L 0 ${h} Z`;
+  document.getElementById('linePath').setAttribute('d', lineD);
+  document.getElementById('areaPath').setAttribute('d', areaD);
+
+})();
+  </script>
+</body>
+</html>
