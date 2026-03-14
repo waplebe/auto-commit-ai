@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nexus — Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0b0d;
+      --surface: rgba(20, 22, 28, 0.9);
+      --surface-hover: rgba(28, 32, 40, 0.95);
+      --border: rgba(255, 255, 255, 0.06);
+      --text: #f4f4f5;
+      --muted: #71717a;
+      --accent: #f97316;
+      --accent-2: #ec4899;
+      --glow: rgba(249, 115, 22, 0.25);
+      --success: #22c55e;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      --shadow-glow: 0 0 40px rgba(249, 115, 22, 0.15);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated gradient background */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 140% 80% at 50% 0%, rgba(249, 115, 22, 0.12) 0%, transparent 55%),
+        radial-gradient(ellipse 100% 120% at 80% 100%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
+        linear-gradient(180deg, #0a0b0d 0%, #0d0e12 100%);
+    }
+    .bg::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40%;
+      background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+      pointer-events: none;
+    }
+
+    /* Mountain silhouettes */
+    .mountains {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 35%;
+      z-index: 0;
+      opacity: 0.08;
+      background:
+        linear-gradient(165deg, transparent 55%, #1a1c24 55.2%) 0% 100% / 25% 70% no-repeat,
+        linear-gradient(155deg, transparent 50%, #22242e 50.2%) 15% 100% / 35% 80% no-repeat,
+        linear-gradient(160deg, transparent 52%, #1a1c24 52.2%) 55% 100% / 30% 65% no-repeat,
+        linear-gradient(158deg, transparent 48%, #22242e 48.2%) 85% 100% / 28% 75% no-repeat;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand {
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .clock-wrap {
+      text-align: right;
+    }
+    .clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.8rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .date-greet {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+
+    /* Main grid - dense layout */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto 1fr;
+      gap: 1rem;
+      flex: 1;
+    }
+    @media (max-width: 1100px) {
+      .main { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 700px) {
+      .main { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+      transition: all 0.3s;
+    }
+    .card:hover {
+      background: var(--surface-hover);
+      box-shadow: var(--shadow), var(--shadow-glow);
+      border-color: rgba(249, 115, 22, 0.15);
+    }
+    .card-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    /* Day progress - spans 2 cols */
+    .day-progress {
+      grid-column: span 2;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      padding: 1.5rem;
+    }
+    .day-ring {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      flex-shrink: 0;
+    }
+    .day-ring svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+    .day-ring .bg { stroke: var(--border); stroke-width: 4; fill: none; }
+    .day-ring .fill {
+      stroke: url(#dayGrad);
+      stroke-width: 4;
+      fill: none;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+    .day-ring .value {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    .day-info {
+      flex: 1;
+    }
+    .day-info h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .day-info p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .day-bars {
+      display: flex;
+      gap: 0.25rem;
+      margin-top: 0.75rem;
+    }
+    .day-bar {
+      flex: 1;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      transition: all 0.3s;
+    }
+    .day-bar.filled {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 8px var(--glow);
+    }
+
+    /* Focus gauge */
+    .focus-gauge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem 0;
+    }
+    .gauge-ring {
+      position: relative;
+      width: 90px;
+      height: 90px;
+    }
+    .gauge-ring svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+    .gauge-ring .fill {
+      stroke: var(--accent);
+      stroke-width: 5;
+      fill: none;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+    .gauge-ring .value {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .focus-gauge .card-label { margin-bottom: 0.5rem; }
+
+    /* Stats row */
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(236, 72, 153, 0.1));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+    .stat-main {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+    }
+
+    /* Now / Task card - large */
+    .now-card {
+      grid-column: span 2;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .now-card .current {
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: var(--text);
+      min-height: 2rem;
+    }
+    .now-card .current.empty {
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .now-card input {
+      margin-top: 0.5rem;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 0;
+      font-size: 1rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .now-card input:focus {
+      border-color: var(--accent);
+    }
+    .now-card input::placeholder {
+      color: var(--muted);
+    }
+
+    /* Quick actions */
+    .quick-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .quick-btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .quick-btn:hover {
+      border-color: var(--accent);
+      background: rgba(249, 115, 22, 0.1);
+      color: var(--accent);
+    }
+    .quick-btn.primary {
+      background: linear-gradient(135deg, var(--accent), #ea580c);
+      border-color: transparent;
+      color: #fff;
+    }
+    .quick-btn.primary:hover {
+      filter: brightness(1.15);
+      transform: translateY(-1px);
+    }
+
+    /* Sessions list */
+    .sessions {
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .session-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .session-item:last-child { border-bottom: none; }
+    .session-task { color: var(--muted); }
+    .session-dur {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+    .empty-state {
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 1rem 0;
+      text-align: center;
+    }
+
+    /* Sound mixer - bottom strip */
+    .sound-strip {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 1rem 1.5rem;
+      flex-wrap: wrap;
+    }
+    .sound-strip .card-label {
+      margin-bottom: 0;
+      margin-right: 0.5rem;
+    }
+    .sound-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .sound-item label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      min-width: 3rem;
+    }
+    input[type="range"] {
+      width: 80px;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 8px var(--glow);
+      transition: transform 0.2s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Phase indicator */
+    .phase-bar {
+      display: flex;
+      gap: 0.25rem;
+      margin-top: 0.5rem;
+    }
+    .phase-seg {
+      flex: 1;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--border);
+      transition: all 0.3s;
+    }
+    .phase-seg.active {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 6px var(--glow);
+    }
+
+    .week-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      height: 60px;
+      margin-top: 0.5rem;
+    }
+    .week-bar {
+      flex: 1;
+      min-width: 20px;
+      background: var(--border);
+      border-radius: 4px 4px 0 0;
+      transition: height 0.3s;
+    }
+    .week-bar.filled {
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    }
+    .moment-card .moment-text {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      min-height: 1.5rem;
+    }
+
+    /* Pulse animation for live elements */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .live { animation: pulse 2s ease-in-out infinite; }
+
+    /* Week chart */
+    .week-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      height: 60px;
+      margin-top: 0.5rem;
+    }
+    .week-bar {
+      flex: 1;
+      min-width: 20px;
+      background: var(--border);
+      border-radius: 4px 4px 0 0;
+      transition: all 0.4s ease;
+    }
+    .week-bar.filled {
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 10px var(--glow);
+    }
+    .week-bar span {
+      display: block;
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 0.25rem;
+    }
+    .moment-card .moment-text {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--accent);
+      min-height: 1.5rem;
+    }
+    .moment-card .quick-btn { margin-top: 0.75rem; }
+
+    /* Scrollbar */
+    .sessions::-webkit-scrollbar { width: 4px; }
+    .sessions::-webkit-scrollbar-track { background: transparent; }
+    .sessions::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="mountains"></div>
+
+  <div class="app">
+    <header class="header">
+      <div class="brand">Nexus</div>
+      <div class="clock-wrap">
+        <div class="clock live" id="clock">00:00</div>
+        <div class="date-greet" id="dateGreet">—</div>
+      </div>
+    </header>
+
+    <main class="main">
+      <svg width="0" height="0">
+        <defs>
+          <linearGradient id="dayGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#f97316" />
+            <stop offset="100%" stop-color="#ec4899" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <!-- Day progress -->
+      <div class="card day-progress">
+        <div class="day-ring">
+          <svg viewBox="0 0 100 100">
+            <circle class="bg" cx="50" cy="50" r="45" />
+            <circle class="fill" id="dayRing" cx="50" cy="50" r="45"
+              stroke-dasharray="282.7" stroke-dashoffset="282.7" />
+          </svg>
+          <div class="value" id="dayPercent">0%</div>
+        </div>
+        <div class="day-info">
+          <h3 id="dayPhase">—</h3>
+          <p id="dayLeft">—</p>
+          <div class="day-bars" id="dayBars"></div>
+        </div>
+      </div>
+
+      <!-- Focus gauge -->
+      <div class="card">
+        <div class="card-label">Focus</div>
+        <div class="focus-gauge">
+          <div class="gauge-ring">
+            <svg viewBox="0 0 100 100">
+              <circle class="fill" id="gaugeRing" cx="50" cy="50" r="40"
+                stroke-dasharray="251" stroke-dashoffset="251" />
+            </svg>
+            <div class="value" id="gaugeVal">0%</div>
+          </div>
+        </div>
+        <div class="phase-bar">
+          <span class="phase-seg" data-h="0"></span>
+          <span class="phase-seg" data-h="6"></span>
+          <span class="phase-seg" data-h="12"></span>
+          <span class="phase-seg" data-h="18"></span>
+        </div>
+      </div>
+
+      <!-- Stats + Week -->
+      <div class="card stat-card">
+        <div class="stat-icon">⏱</div>
+        <div>
+          <div class="stat-main" id="todayMins">0</div>
+          <div class="stat-sub">минут сегодня</div>
+        </div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon">🔥</div>
+        <div>
+          <div class="stat-main" id="streak">0</div>
+          <div class="stat-sub">дней подряд</div>
+        </div>
+      </div>
+      <!-- Week chart -->
+      <div class="card" style="grid-column: span 2;">
+        <div class="card-label">Неделя</div>
+        <div class="week-chart" id="weekChart"></div>
+      </div>
+      <!-- Moment -->
+      <div class="card moment-card">
+        <div class="card-label">Момент</div>
+        <div class="moment-text" id="momentText">Дыши 4 сек</div>
+        <button type="button" class="quick-btn" id="nextMoment" style="margin-top:0.5rem;">Другое</button>
+      </div>
+
+      <!-- Now / Task -->
+      <div class="card now-card">
+        <div class="card-label">Сейчас</div>
+        <div class="current" id="currentTask">Введи задачу ниже</div>
+        <input type="text" id="taskInput" placeholder="Чем занят?">
+        <div class="quick-actions" style="margin-top: 1rem;">
+          <button type="button" class="quick-btn primary" id="start25">25 мин</button>
+          <button type="button" class="quick-btn" id="start5">5 мин</button>
+        </div>
+      </div>
+
+      <!-- Sessions -->
+      <div class="card">
+        <div class="card-label">Сегодня</div>
+        <div class="sessions" id="sessionsList">
+          <div class="empty-state">Нет сессий</div>
+        </div>
+      </div>
+
+      <!-- Sound strip -->
+      <div class="card sound-strip">
+        <span class="card-label">Звуки</span>
+        <div class="sound-item">
+          <label>Белый</label>
+          <input type="range" id="sWhite" min="0" max="100" value="0">
+        </div>
+        <div class="sound-item">
+          <label>Коричн.</label>
+          <input type="range" id="sBrown" min="0" max="100" value="0">
+        </div>
+        <div class="sound-item">
+          <label>Дождь</label>
+          <input type="range" id="sRain" min="0" max="100" value="0">
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Timer overlay (minimal) -->
+  <div id="timerOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:100; flex-direction:column; align-items:center; justify-content:center; color:#fff;">
+    <div style="font-family:JetBrains Mono; font-size:4rem; font-weight:600;" id="overlayTime">25:00</div>
+    <div style="font-size:1rem; color:#71717a; margin-top:0.5rem;" id="overlayTask">—</div>
+    <button id="overlayStop" style="margin-top:2rem; padding:0.75rem 2rem; background:#f97316; border:none; border-radius:10px; color:#fff; cursor:pointer; font-weight:600;">Стоп</button>
+  </div>
+
+  <script>
+(function() {
+  const CIRC = 2 * Math.PI * 45;
+  const GAUGE_CIRC = 2 * Math.PI * 40;
+
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    const days = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+    const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    document.getElementById('dateGreet').textContent =
+      days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()];
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Day progress
+  function updateDay() {
+    const now = new Date();
+    const start = new Date(now); start.setHours(0,0,0,0);
+    const end = new Date(now); end.setHours(23,59,59,999);
+    const progress = (now - start) / (end - start);
+    const percent = Math.round(progress * 100);
+
+    document.getElementById('dayRing').style.strokeDashoffset = (1 - progress) * CIRC;
+    document.getElementById('dayPercent').textContent = percent + '%';
+
+    const h = now.getHours();
+    const phase = h < 6 ? 'Ночь' : h < 12 ? 'Утро' : h < 18 ? 'День' : 'Вечер';
+    document.getElementById('dayPhase').textContent = phase;
+
+    const endDay = new Date(now); endDay.setHours(23,59,0,0);
+    const minsLeft = Math.round((endDay - now) / 60000);
+    const hrs = Math.floor(minsLeft / 60), m = minsLeft % 60;
+    document.getElementById('dayLeft').textContent =
+      (hrs ? hrs + 'ч ' : '') + m + ' мин до конца дня';
+
+    document.querySelectorAll('.phase-seg').forEach(seg => {
+      const h0 = parseInt(seg.dataset.h, 10);
+      seg.classList.toggle('active', h >= h0 && h < (h0 + 6));
+    });
+
+    const bars = document.getElementById('dayBars');
+    bars.innerHTML = '';
+    for (let i = 0; i < 24; i++) {
+      const b = document.createElement('div');
+      b.className = 'day-bar' + (i < h ? ' filled' : '');
+      bars.appendChild(b);
+    }
+  }
+  updateDay();
+  setInterval(updateDay, 60000);
+
+  // Gauge (placeholder - could be "focus score" based on sessions)
+  function updateGauge() {
+    const sessions = JSON.parse(localStorage.getItem('nexus-sessions') || '[]');
+    const today = new Date().toDateString();
+    const todaySessions = sessions.filter(s => s.date === today);
+    const totalMins = todaySessions.reduce((a,s) => a + s.mins, 0);
+    const gauge = Math.min(100, totalMins * 2);
+    document.getElementById('gaugeRing').style.strokeDashoffset = (1 - gauge/100) * GAUGE_CIRC;
+    document.getElementById('gaugeVal').textContent = gauge + '%';
+  }
+  updateGauge();
+
+  // Stats
+  function updateStats() {
+    const sessions = JSON.parse(localStorage.getItem('nexus-sessions') || '[]');
+    const today = new Date().toDateString();
+    const todayData = sessions.filter(s => s.date === today);
+    const totalMins = todayData.reduce((a,s) => a + s.mins, 0);
+    document.getElementById('todayMins').textContent = totalMins;
+
+    const days = [...new Set(sessions.map(s => s.date))].sort().reverse();
+    let streak = 0;
+    const oneDay = 86400000;
+    for (let i = 0; i < days.length; i++) {
+      const d = new Date(days[i]).getTime();
+      const prev = i > 0 ? new Date(days[i-1]).getTime() : d + oneDay;
+      if (prev - d > oneDay * 1.5) break;
+      streak++;
+    }
+    document.getElementById('streak').textContent = streak;
+
+    const list = document.getElementById('sessionsList');
+    if (todayData.length) {
+      list.innerHTML = todayData.slice().reverse().map(s =>
+        `<div class="session-item"><span class="session-task">${(s.task || '—').replace(/</g,'&lt;')}</span><span class="session-dur">${s.mins} мин</span></div>`
+      ).join('');
+    } else list.innerHTML = '<div class="empty-state">Нет сессий</div>';
+
+    updateGauge();
+    updateWeekChart(sessions);
+  }
+
+  function updateWeekChart(sessions) {
+    const el = document.getElementById('weekChart');
+    if (!el) return;
+    const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    const today = new Date();
+    const byDate = {};
+    sessions.forEach(s => { byDate[s.date] = (byDate[s.date]||0) + s.mins; });
+    const max = Math.max(1, ...Object.values(byDate));
+    el.innerHTML = '';
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toDateString();
+      const mins = byDate[key] || 0;
+      const h = max ? (mins / max) * 100 : 0;
+      const div = document.createElement('div');
+      div.className = 'week-bar' + (mins ? ' filled' : '');
+      div.style.height = h + '%';
+      div.title = days[(d.getDay() + 6) % 7] + ': ' + mins + ' мин';
+      el.appendChild(div);
+    }
+  }
+
+  updateStats();
+
+  // Task
+  const taskInput = document.getElementById('taskInput');
+  const currentTask = document.getElementById('currentTask');
+  taskInput.addEventListener('input', () => {
+    currentTask.textContent = taskInput.value || 'Введи задачу ниже';
+    currentTask.classList.toggle('empty', !taskInput.value);
+  });
+  taskInput.addEventListener('blur', () => {
+    localStorage.setItem('nexus-task', taskInput.value);
+  });
+  taskInput.value = localStorage.getItem('nexus-task') || '';
+
+  // Timer
+  let timerId = null;
+  let timerSec = 0;
+
+  function showOverlay(sec, task) {
+    const ol = document.getElementById('timerOverlay');
+    ol.style.display = 'flex';
+    document.getElementById('overlayTime').textContent = Math.floor(sec/60) + ':' + String(sec%60).padStart(2,'0');
+    document.getElementById('overlayTask').textContent = task || '—';
+  }
+
+  function hideOverlay() {
+    document.getElementById('timerOverlay').style.display = 'none';
+  }
+
+  function runTimer(sec) {
+    timerSec = sec;
+    showOverlay(sec, taskInput.value);
+
+    function tick() {
+      timerSec--;
+      document.getElementById('overlayTime').textContent =
+        Math.floor(timerSec/60) + ':' + String(timerSec%60).padStart(2,'0');
+      if (timerSec <= 0) {
+        clearInterval(timerId);
+        timerId = null;
+        hideOverlay();
+        if (sec === 25 * 60) {
+          const sessions = JSON.parse(localStorage.getItem('nexus-sessions') || '[]');
+          sessions.push({
+            task: taskInput.value || 'Фокус',
+            mins: 25,
+            date: new Date().toDateString()
+          });
+          localStorage.setItem('nexus-sessions', JSON.stringify(sessions));
+          updateStats();
+        }
+      }
+    }
+    if (timerId) clearInterval(timerId);
+    timerId = setInterval(tick, 1000);
+  }
+
+  document.getElementById('start25').addEventListener('click', () => runTimer(25 * 60));
+  document.getElementById('start5').addEventListener('click', () => runTimer(5 * 60));
+  document.getElementById('overlayStop').addEventListener('click', () => {
+    if (timerId) clearInterval(timerId);
+    timerId = null;
+    hideOverlay();
+  });
+
+  // Audio (simplified)
+  let audioCtx = null;
+  const audioNodes = {};
+
+  function getCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function createWhiteNoise() {
+    const ctx = getCtx();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    src.start(0);
+    return src;
+  }
+
+  function setupSound(id, createNode) {
+    const slider = document.getElementById('s' + id.charAt(0).toUpperCase() + id.slice(1));
+    if (!slider) return;
+    slider.addEventListener('input', () => {
+      const ctx = getCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+      const vol = slider.value / 100;
+      if (!audioNodes[id]) {
+        const node = createNode();
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        node.connect(gain);
+        gain.connect(ctx.destination);
+        audioNodes[id] = gain;
+      }
+      audioNodes[id].gain.linearRampToValueAtTime(vol * 0.12, ctx.currentTime + 0.1);
+    });
+  }
+
+  setupSound('white', createWhiteNoise);
+  setupSound('brown', () => {
+    const src = createWhiteNoise();
+    const ctx = getCtx();
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 150;
+    src.connect(f);
+    return f;
+  });
+  setupSound('rain', () => {
+    const ctx = getCtx();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 600;
+    src.connect(f);
+    src.start(0);
+    return f;
+  });
+
+  if (taskInput.value) {
+    currentTask.textContent = taskInput.value;
+    currentTask.classList.remove('empty');
+  }
+
+  const MOMENTS = ['Дыши 4 сек', 'Встань', 'Вода', 'Посмотри в окно', 'Потянись', 'Закрой глаза 10 сек'];
+  let momentIdx = 0;
+  const momentEl = document.getElementById('momentText');
+  document.getElementById('nextMoment').addEventListener('click', () => {
+    momentIdx = (momentIdx + 1) % MOMENTS.length;
+    if (momentEl) momentEl.textContent = MOMENTS[momentIdx];
+  });
+})();
+  </script>
+</body>
+</html>
