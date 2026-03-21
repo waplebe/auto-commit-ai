@@ -229,21 +229,55 @@
     }
 
     .footer a:hover { text-decoration: underline; }
+
+    .lang-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 10;
+      display: flex;
+      gap: 0.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.25rem;
+    }
+    .lang-toggle button {
+      font-family: 'Onest', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.35rem 0.6rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color 0.2s, background 0.2s;
+    }
+    .lang-toggle button:hover { color: var(--text); }
+    .lang-toggle button.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
+  <div class="lang-toggle">
+    <button type="button" data-lang="ru" class="active">RU</button>
+    <button type="button" data-lang="en">EN</button>
+  </div>
   <div class="noise"></div>
   <div class="screen">
     <div class="content">
-      <p class="tagline">Твой час стоит денег</p>
-      <h1>Сколько стоит<br>твоя минута?</h1>
-      <p class="sub">Зарплата в месяц → стоимость каждой секунды</p>
+      <p class="tagline" data-i18n="tagline">Твой час стоит денег</p>
+      <h1><span data-i18n="title1">Сколько стоит</span><br><span data-i18n="title2">твоя минута?</span></h1>
+      <p class="sub" data-i18n="sub">Зарплата в месяц → стоимость каждой секунды</p>
 
       <div class="input-block">
-        <label for="salary">Зарплата в месяц</label>
+        <label for="salary" data-i18n="salaryLabel">Зарплата в месяц</label>
         <div class="input-wrap">
           <input type="number" id="salary" value="120000" min="10000" step="5000" placeholder="120000" inputmode="numeric">
-          <span class="currency">₽</span>
+          <span class="currency" id="currencySymbol">₽</span>
         </div>
       </div>
 
@@ -251,25 +285,25 @@
         <div class="rate-row">
           <div class="rate-item">
             <span class="rate-value" id="perSec">—</span>
-            <span class="rate-label">₽/сек</span>
+            <span class="rate-label" id="labelSec">₽/сек</span>
           </div>
           <div class="rate-item">
             <span class="rate-value" id="perMin">—</span>
-            <span class="rate-label">₽/мин</span>
+            <span class="rate-label" id="labelMin">₽/мин</span>
           </div>
           <div class="rate-item">
             <span class="rate-value" id="perHour">—</span>
-            <span class="rate-label">₽/час</span>
+            <span class="rate-label" id="labelHour">₽/час</span>
           </div>
         </div>
         <div class="burn-block">
-          <p class="burn-text">Пока ты смотришь на этот экран — уже</p>
+          <p class="burn-text" data-i18n="burnText">Пока ты смотришь на этот экран — уже</p>
           <p class="burn-value" id="burn">0 ₽</p>
         </div>
       </div>
 
       <p class="footer">
-        Один файл · <a href="https://github.com/waplebe/auto-commit-ai">Исходный код</a>
+        <span data-i18n="footer">Один файл</span> · <a href="https://github.com/waplebe/auto-commit-ai" data-i18n="sourceCode">Исходный код</a>
       </p>
     </div>
   </div>
@@ -277,12 +311,74 @@
   <script>
     const HOURS_MONTH = 160;
 
-    function format(n) {
-      if (n >= 1000) return Math.round(n).toLocaleString('ru-RU');
+    const i18n = {
+      ru: {
+        tagline: 'Твой час стоит денег',
+        title1: 'Сколько стоит',
+        title2: 'твоя минута?',
+        sub: 'Зарплата в месяц → стоимость каждой секунды',
+        salaryLabel: 'Зарплата в месяц',
+        labelSec: '₽/сек',
+        labelMin: '₽/мин',
+        labelHour: '₽/час',
+        burnText: 'Пока ты смотришь на этот экран — уже',
+        footer: 'Один файл',
+        sourceCode: 'Source code',
+        currency: '₽'
+      },
+      en: {
+        tagline: 'Your hour costs money',
+        title1: "What's the cost of",
+        title2: 'your minute?',
+        sub: 'Monthly salary → cost of every second',
+        salaryLabel: 'Monthly salary',
+        labelSec: '$/sec',
+        labelMin: '$/min',
+        labelHour: '$/hr',
+        burnText: "While you're looking at this screen — already",
+        footer: 'Single file',
+        sourceCode: 'Source code',
+        currency: '$'
+      }
+    };
+
+    let lang = localStorage.getItem('minute-worth-lang') || 'ru';
+    const salaryPlaceholder = { ru: '120000', en: '5000' };
+
+    function format(n, locale) {
+      const loc = locale || (lang === 'en' ? 'en-US' : 'ru-RU');
+      if (n >= 1000) return Math.round(n).toLocaleString(loc);
       if (n >= 1) return n.toFixed(1);
       if (n >= 0.01) return n.toFixed(2);
       return n.toFixed(3);
     }
+
+    function applyLang() {
+      const t = i18n[lang];
+      document.documentElement.lang = lang === 'en' ? 'en' : 'ru';
+      document.title = lang === 'en' ? "Cost of your minute" : 'Стоимость твоей минуты';
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.dataset.i18n;
+        if (t[k]) el.textContent = t[k];
+      });
+      document.getElementById('currencySymbol').textContent = t.currency;
+      document.getElementById('labelSec').textContent = t.labelSec;
+      document.getElementById('labelMin').textContent = t.labelMin;
+      document.getElementById('labelHour').textContent = t.labelHour;
+      document.getElementById('salary').placeholder = salaryPlaceholder[lang];
+      document.querySelectorAll('.lang-toggle button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+      update();
+    }
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        lang = btn.dataset.lang;
+        localStorage.setItem('minute-worth-lang', lang);
+        applyLang();
+      });
+    });
 
     let salary = 120000;
     let perSec = 0;
@@ -294,12 +390,13 @@
     const perMinEl = document.getElementById('perMin');
     const perHourEl = document.getElementById('perHour');
     const burnEl = document.getElementById('burn');
+    const currencySym = () => i18n[lang].currency;
 
     function update() {
       salary = Number(salaryEl.value) || 0;
       if (salary <= 0) {
         perSecEl.textContent = perMinEl.textContent = perHourEl.textContent = '—';
-        burnEl.textContent = '0 ₽';
+        burnEl.textContent = '0 ' + currencySym();
         burnEl.classList.add('zero');
         perSec = 0;
         burnStart = null;
@@ -309,10 +406,11 @@
       const hourly = salary / HOURS_MONTH;
       perSec = hourly / 3600;
       const perMin = perSec * 60;
+      const sym = currencySym();
 
-      perSecEl.textContent = format(perSec) + ' ₽';
-      perMinEl.textContent = format(perMin) + ' ₽';
-      perHourEl.textContent = format(hourly) + ' ₽';
+      perSecEl.textContent = format(perSec) + ' ' + sym;
+      perMinEl.textContent = format(perMin) + ' ' + sym;
+      perHourEl.textContent = format(hourly) + ' ' + sym;
 
       burnEl.classList.remove('zero');
       burnStart = burnStart ?? Date.now();
@@ -322,7 +420,7 @@
       if (perSec > 0 && burnStart) {
         const elapsed = (Date.now() - burnStart) / 1000;
         burnAccum = perSec * elapsed;
-        burnEl.textContent = format(burnAccum) + ' ₽';
+        burnEl.textContent = format(burnAccum) + ' ' + currencySym();
       }
     }
 
@@ -332,7 +430,7 @@
       update();
     });
 
-    update();
+    applyLang();
     setInterval(tick, 100);
   </script>
 </body>
