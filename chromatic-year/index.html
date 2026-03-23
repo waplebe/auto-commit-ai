@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chromatic Year — мозаика твоего года</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0a0b0f;
+      --ink:     #12141a;
+      --surface: #191c25;
+      --border:  rgba(255,255,255,0.09);
+      --text:    #dde4ef;
+      --muted:   #6b748a;
+      --radius:  14px;
+      --tile:    12px;
+      --gap:     3px;
+      --font:    'Geist', system-ui, sans-serif;
+      --mono:    'Geist Mono', monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+
+    /* Top bar */
+    .top-bar {
+      display: flex; flex-wrap: wrap; gap: 1rem;
+      align-items: flex-start; justify-content: space-between;
+      margin-bottom: 2rem;
+    }
+    .brand h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      font-weight: 800;
+      background: linear-gradient(120deg, #fff 0%, #adbef7 40%, #7c9fff 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      line-height: 1.1; margin-bottom: 0.25rem;
+    }
+    .brand p { font-size: 0.85rem; color: var(--muted); }
+    .top-right { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .lang {
+      display: flex; border-radius: 8px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .lang button {
+      padding: 0.38rem 0.75rem; border: none; background: transparent;
+      color: var(--muted); cursor: pointer; font-size: 0.72rem; font-weight: 700;
+    }
+    .lang button.on { background: rgba(124,159,255,0.18); color: #adbef7; }
+    .btn {
+      font-family: var(--font); font-size: 0.78rem; font-weight: 600;
+      padding: 0.42rem 0.9rem; border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); cursor: pointer;
+      transition: background 0.18s, border-color 0.18s;
+    }
+    .btn:hover { background: #22263a; border-color: rgba(124,159,255,0.3); }
+
+    /* Stats row */
+    .stats-row {
+      display: flex; flex-wrap: wrap; gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.6rem 1rem;
+      display: flex; flex-direction: column; gap: 0.15rem;
+    }
+    .stat-chip .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; }
+    .stat-chip .value { font-family: var(--mono); font-size: 1.1rem; font-weight: 500; }
+    .stat-chip .value span { font-size: 0.65rem; color: var(--muted); margin-left: 0.2rem; }
+
+    /* Grid card */
+    .grid-card {
+      background: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.35rem 1.5rem;
+      overflow-x: auto;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .month-labels {
+      display: flex; gap: var(--gap);
+      margin-bottom: 0.45rem;
+      font-size: 0.62rem; color: var(--muted);
+      font-family: var(--mono); font-weight: 500;
+      letter-spacing: 0.04em;
+      padding-left: 18px;
+    }
+    .month-label { min-width: calc(var(--tile) + var(--gap)); text-align: left; }
+    .week-rows {
+      display: grid;
+      grid-template-rows: repeat(7, var(--tile));
+      grid-auto-flow: column;
+      grid-auto-columns: var(--tile);
+      gap: var(--gap);
+    }
+    .tile {
+      width: var(--tile);
+      height: var(--tile);
+      border-radius: 3px;
+      background: rgba(255,255,255,0.04);
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.15s;
+      position: relative;
+    }
+    .tile:hover { transform: scale(1.45); z-index: 5; box-shadow: 0 0 0 2px rgba(255,255,255,0.3); }
+    .tile.today { box-shadow: 0 0 0 2px #7c9fff; }
+    .tile.future { cursor: default; }
+    .tile.future:hover { transform: none; box-shadow: none; }
+
+    /* Day-of-week labels */
+    .day-labels {
+      display: grid;
+      grid-template-rows: repeat(7, var(--tile));
+      gap: var(--gap);
+      float: left;
+      margin-right: 6px;
+      font-size: 0.58rem; color: var(--muted);
+      font-family: var(--mono);
+      line-height: var(--tile);
+    }
+
+    /* Legend */
+    .legend {
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: 0.75rem 1.25rem; margin-top: 1rem;
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .legend-swatch {
+      display: flex; align-items: center; gap: 0.35rem;
+    }
+    .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+    /* Modal overlay */
+    .overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 1.75rem;
+      width: 100%; max-width: 370px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+      transform: translateY(12px); transition: transform 0.2s;
+    }
+    .overlay.open .modal { transform: translateY(0); }
+    .modal-date { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 0.25rem; font-weight: 600; }
+    .modal-heading { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 1.25rem; }
+    .modal-field { margin-bottom: 1.1rem; }
+    .modal-field label { display: block; font-size: 0.78rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .dots { display: flex; gap: 0.45rem; }
+    .dot {
+      width: 36px; height: 36px; border-radius: 10px;
+      border: 2px solid var(--border);
+      background: var(--ink); cursor: pointer;
+      font-family: var(--mono); font-size: 0.9rem;
+      color: var(--muted); transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .dot:hover { border-color: rgba(124,159,255,0.5); color: var(--text); }
+    .dot.active { color: #fff; font-weight: 500; }
+    .modal-note { width: 100%; padding: 0.55rem; font-family: var(--font); font-size: 0.82rem; background: var(--ink); border: 1px solid var(--border); border-radius: 8px; color: var(--text); resize: vertical; min-height: 54px; margin-bottom: 0.25rem; }
+    .modal-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; }
+    .modal-actions .btn { flex: 1; padding: 0.6rem; font-size: 0.82rem; }
+    .modal-actions .btn.save { background: linear-gradient(135deg, #3a4be8, #6d7fff); border-color: transparent; color: #fff; }
+    .modal-actions .btn.del { color: #f87171; border-color: rgba(248,113,113,0.3); background: transparent; }
+
+    /* Chart section */
+    .charts { margin-top: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) { .charts { grid-template-columns: 1fr; } }
+    .chart-card { background: var(--ink); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; }
+    .chart-card h3 { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.13em; color: var(--muted); font-weight: 700; margin-bottom: 0.75rem; }
+    .bars { display: flex; align-items: flex-end; gap: 4px; height: 60px; }
+    .bar { flex: 1; border-radius: 3px 3px 0 0; transition: height 0.4s ease; min-width: 0; }
+    .month-bar-labels { display: flex; gap: 4px; margin-top: 4px; font-size: 0.55rem; color: var(--muted); font-family: var(--mono); }
+    .month-bar-labels span { flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+    .trend-wrap { position: relative; }
+    .trend-legend { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.67rem; color: var(--muted); }
+    .trend-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 0.25rem; vertical-align: middle; }
+
+    footer { margin-top: 2.5rem; font-size: 0.72rem; color: var(--muted); text-align: center; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-bar">
+    <div class="brand">
+      <h1 id="headTitle">Chromatic Year</h1>
+      <p id="headSub">Мозаика твоего 2025 года — каждый день в цвете</p>
+    </div>
+    <div class="top-right">
+      <div class="lang">
+        <button type="button" id="bRu" class="on">RU</button>
+        <button type="button" id="bEn">EN</button>
+      </div>
+      <button type="button" class="btn" id="btnExport">↓ JSON</button>
+      <label class="btn" id="lblImport">↑ JSON<input type="file" id="fileImport" accept=".json" style="display:none"></label>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="grid-card">
+    <div style="display:flex">
+      <div class="day-labels" id="dayLabels"></div>
+      <div style="flex:1;overflow-x:auto">
+        <div class="month-labels" id="monthLabels"></div>
+        <div class="week-rows" id="weekRows"></div>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="charts" id="charts"></div>
+
+  <footer id="footerText">Данные хранятся в браузере. Нажми на любой прошедший день, чтобы заполнить.</footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <div class="modal-date" id="modalDate"></div>
+    <div class="modal-heading" id="modalHeading"></div>
+    <div class="modal-field" id="mfEnergy"></div>
+    <div class="modal-field" id="mfMood"></div>
+    <div class="modal-field" id="mfFocus"></div>
+    <div class="modal-field">
+      <label id="labelNote"></label>
+      <textarea class="modal-note" id="modalNote" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn del" id="btnDel"></button>
+      <button type="button" class="btn save" id="btnSave"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const YEAR = new Date().getFullYear();
+  const SK = 'chroma-year-v1-' + YEAR;
+  const LK = 'chroma-lang';
+
+  const i18n = {
+    ru: {
+      title: 'Chromatic Year',
+      sub: (y) => `Мозаика твоего ${y} года — каждый день в цвете`,
+      streak: 'Серия', days: 'дн.', filled: 'Записей', ofYear: '/ год',
+      avgEnergy: 'Средняя энергия', avgMood: 'Настроение', avgFocus: 'Фокус',
+      empty: 'не залогировано', future: 'впереди',
+      lEnergy: 'Энергия', lMood: 'Настроение', lFocus: 'Фокус', lNote: 'Заметка (необязательно)',
+      save: 'Сохранить', del: 'Удалить',
+      months: ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'],
+      dows: ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],
+      chartMonth: 'Активность по месяцам',
+      chartTrend: 'Динамика за последние 30 дней',
+      trendE: 'Энергия', trendM: 'Настроение', trendF: 'Фокус',
+      legendLow: 'Низко', legendHigh: 'Высоко', legendEmpty: 'Нет данных',
+      footer: 'Данные хранятся в браузере. Нажми на любой прошедший день, чтобы заполнить.',
+      today: 'Сегодня',
+    },
+    en: {
+      title: 'Chromatic Year',
+      sub: (y) => `Your ${y} mosaic — every day in color`,
+      streak: 'Streak', days: 'days', filled: 'Logged', ofYear: '/ year',
+      avgEnergy: 'Avg Energy', avgMood: 'Mood', avgFocus: 'Focus',
+      empty: 'not logged', future: 'ahead',
+      lEnergy: 'Energy', lMood: 'Mood', lFocus: 'Focus', lNote: 'Note (optional)',
+      save: 'Save', del: 'Delete',
+      months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      dows: ['Mo','Tu','We','Th','Fr','Sa','Su'],
+      chartMonth: 'Activity by month',
+      chartTrend: 'Last 30 days trend',
+      trendE: 'Energy', trendM: 'Mood', trendF: 'Focus',
+      legendLow: 'Low', legendHigh: 'High', legendEmpty: 'No data',
+      footer: 'Data stored in your browser. Click any past day to log it.',
+      today: 'Today',
+    }
+  };
+
+  let lang = localStorage.getItem(LK) || 'ru';
+  let data = {};
+  let currentKey = null;
+
+  function t() { return i18n[lang]; }
+
+  function dateKey(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function parseKey(k) {
+    const [y, m, d] = k.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function load() {
+    try { data = JSON.parse(localStorage.getItem(SK) || '{}'); } catch (e) { data = {}; }
+  }
+  function save() { localStorage.setItem(SK, JSON.stringify(data)); }
+
+  function tileColor(entry) {
+    if (!entry) return 'rgba(255,255,255,0.04)';
+    const e = (entry.energy - 1) / 4;
+    const m = (entry.mood - 1) / 4;
+    const f = (entry.focus - 1) / 4;
+    const avg = (e + m + f) / 3;
+    const hue = Math.round(220 - m * 160);       // 220 blue → 60 warm
+    const sat = Math.round(28 + e * 58);          // 28-86%
+    const lit = Math.round(12 + avg * 34);        // 12-46%
+    return `hsl(${hue},${sat}%,${lit}%)`;
+  }
+
+  function glowColor(entry) {
+    if (!entry) return 'transparent';
+    const avg = ((entry.energy - 1) + (entry.mood - 1) + (entry.focus - 1)) / 12;
+    if (avg < 0.5) return 'transparent';
+    const c = tileColor(entry);
+    return c;
+  }
+
+  function getDaysOfYear(year) {
+    const days = [];
+    for (let m = 0; m < 12; m++) {
+      const dim = new Date(year, m + 1, 0).getDate();
+      for (let d = 1; d <= dim; d++) {
+        days.push(new Date(year, m, d));
+      }
+    }
+    return days;
+  }
+
+  function buildGrid() {
+    const days = getDaysOfYear(YEAR);
+    const today = dateKey(new Date());
+    const todayObj = new Date();
+    todayObj.setHours(0, 0, 0, 0);
+
+    // Monday-first: getDay() 0=Sun→6, 1=Mon→0
+    function mondayFirst(d) { return (d.getDay() + 6) % 7; }
+
+    // Weeks: each column is a week starting from Monday before Jan 1
+    const jan1 = new Date(YEAR, 0, 1);
+    const startOffset = mondayFirst(jan1); // how many cells to skip at top
+    const totalCells = startOffset + days.length;
+    const numWeeks = Math.ceil(totalCells / 7);
+
+    // Month label positioning
+    const monthLabelsEl = document.getElementById('monthLabels');
+    const monthPos = {};
+    days.forEach(d => {
+      const w = Math.floor((startOffset + mondayFirst(new Date(YEAR, 0, 1)) - mondayFirst(new Date(YEAR, 0, 1)) + d - jan1) / 7);
+      // actually compute week index properly
+    });
+
+    // Build week column index for each day
+    function weekIdx(d) {
+      const diff = Math.floor((d - jan1) / 86400000);
+      return Math.floor((diff + startOffset) / 7);
+    }
+    function rowIdx(d) {
+      return mondayFirst(d);
+    }
+
+    // Month labels
+    const monthMap = {}; // weekIdx → month label
+    days.forEach(d => {
+      if (d.getDate() === 1) {
+        monthMap[weekIdx(d)] = t().months[d.getMonth()];
+      }
+    });
+    monthLabelsEl.innerHTML = '';
+    for (let w = 0; w < numWeeks; w++) {
+      const span = document.createElement('span');
+      span.className = 'month-label';
+      span.textContent = monthMap[w] || '';
+      span.style.width = (12 + 3) + 'px';
+      monthLabelsEl.appendChild(span);
+    }
+
+    // Day-of-week labels
+    const dowEl = document.getElementById('dayLabels');
+    dowEl.innerHTML = '';
+    const dows = t().dows;
+    [0, 2, 4, 6].forEach(i => {
+      const d = document.createElement('div');
+      d.textContent = i < dows.length ? dows[i] : '';
+      dowEl.appendChild(d);
+      if (i < 6) {
+        const blank = document.createElement('div');
+        dowEl.appendChild(blank);
+      }
+    });
+    dowEl.innerHTML = dows.map((d, i) => `<div style="opacity:${i % 2 === 0 ? 1 : 0.3}">${d}</div>`).join('');
+
+    // Build tile grid
+    const weekRowsEl = document.getElementById('weekRows');
+    weekRowsEl.innerHTML = '';
+    weekRowsEl.style.gridTemplateColumns = `repeat(${numWeeks}, 12px)`;
+    weekRowsEl.style.gridAutoColumns = '12px';
+    weekRowsEl.style.gridTemplateRows = 'repeat(7, 12px)';
+
+    // Create all tiles (numWeeks * 7)
+    const tiles = [];
+    for (let w = 0; w < numWeeks; w++) {
+      for (let r = 0; r < 7; r++) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.style.gridColumn = (w + 1);
+        tile.style.gridRow = (r + 1);
+        tiles.push(tile);
+        weekRowsEl.appendChild(tile);
+      }
+    }
+
+    // Fill tiles with data
+    days.forEach(d => {
+      const w = weekIdx(d);
+      const r = rowIdx(d);
+      const idx = w * 7 + r;
+      const tile = tiles[idx];
+      if (!tile) return;
+      const key = dateKey(d);
+      const entry = data[key];
+      const isFuture = d > todayObj;
+      const isToday = key === today;
+
+      tile.style.background = tileColor(entry);
+      if (entry) {
+        const avg = ((entry.energy - 1) + (entry.mood - 1) + (entry.focus - 1)) / 12;
+        if (avg > 0.6) tile.style.boxShadow = `0 0 6px 1px ${tileColor(entry)}55`;
+      }
+      if (isToday) tile.classList.add('today');
+      if (isFuture) tile.classList.add('future');
+
+      // Tooltip
+      const dd = d;
+      tile.title = formatDateFull(dd) + (entry ? ` ⚡${entry.energy} 😊${entry.mood} 🎯${entry.focus}` : ` — ${isFuture ? t().future : t().empty}`);
+
+      if (!isFuture) {
+        tile.addEventListener('click', () => openModal(key, dd));
+      }
+    });
+  }
+
+  function formatDateFull(d) {
+    const opts = { weekday: 'long', day: 'numeric', month: 'long' };
+    return d.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', opts);
+  }
+  function formatDateShort(d) {
+    const opts = { day: 'numeric', month: 'long' };
+    return d.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', opts);
+  }
+
+  // Stats
+  function buildStats() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = getDaysOfYear(YEAR).filter(d => d <= today);
+    const entries = days.map(d => data[dateKey(d)]).filter(Boolean);
+    const total = days.length;
+    const logged = entries.length;
+
+    // Streak
+    let streak = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      if (data[dateKey(d)]) streak++;
+      else break;
+    }
+    const avg = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : '—';
+    const avgE = avg(entries.map(e => e.energy));
+    const avgM = avg(entries.map(e => e.mood));
+    const avgF = avg(entries.map(e => e.focus));
+
+    const tr = t();
+    const statsEl = document.getElementById('statsRow');
+    statsEl.innerHTML = [
+      { label: tr.streak, value: streak, unit: tr.days },
+      { label: tr.filled, value: logged, unit: total + tr.ofYear },
+      { label: tr.avgEnergy, value: avgE, unit: '/ 5' },
+      { label: tr.avgMood, value: avgM, unit: '/ 5' },
+      { label: tr.avgFocus, value: avgF, unit: '/ 5' },
+    ].map(s => `
+      <div class="stat-chip">
+        <div class="label">${s.label}</div>
+        <div class="value">${s.value}<span>${s.unit}</span></div>
+      </div>
+    `).join('');
+  }
+
+  // Charts
+  function buildCharts() {
+    const tr = t();
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    // Monthly activity
+    const monthly = Array(12).fill(0);
+    Object.keys(data).forEach(k => {
+      const d = parseKey(k);
+      if (d.getFullYear() === YEAR && d <= today) {
+        monthly[d.getMonth()]++;
+      }
+    });
+    const maxM = Math.max(1, ...monthly);
+
+    // Last 30 days trend
+    const last30E = [], last30M = [], last30F = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const e = data[dateKey(d)];
+      last30E.push(e ? e.energy : null);
+      last30M.push(e ? e.mood : null);
+      last30F.push(e ? e.focus : null);
+    }
+
+    const chartsEl = document.getElementById('charts');
+    chartsEl.innerHTML = `
+      <div class="chart-card">
+        <h3>${tr.chartMonth}</h3>
+        <div class="bars" id="monthBars"></div>
+        <div class="month-bar-labels">${tr.months.map(m => `<span>${m}</span>`).join('')}</div>
+      </div>
+      <div class="chart-card">
+        <h3>${tr.chartTrend}</h3>
+        <div class="trend-wrap">
+          <svg id="trendSvg" viewBox="0 0 300 60" width="100%" style="display:block;overflow:visible"></svg>
+        </div>
+        <div class="trend-legend">
+          <span><span class="trend-dot" style="background:#7c9fff"></span>${tr.trendE}</span>
+          <span><span class="trend-dot" style="background:#34d399"></span>${tr.trendM}</span>
+          <span><span class="trend-dot" style="background:#fbbf24"></span>${tr.trendF}</span>
+        </div>
+      </div>
+    `;
+
+    // Month bars
+    const barsEl = document.getElementById('monthBars');
+    monthly.forEach((v, i) => {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      const pct = v / maxM;
+      const hue = Math.round(220 - (i / 11) * 100);
+      bar.style.height = Math.max(4, pct * 56) + 'px';
+      bar.style.background = `hsl(${hue},65%,55%)`;
+      bar.title = `${tr.months[i]}: ${v}`;
+      barsEl.appendChild(bar);
+    });
+
+    // Trend SVG
+    const trendSvg = document.getElementById('trendSvg');
+    const cols = [
+      { data: last30E, color: '#7c9fff' },
+      { data: last30M, color: '#34d399' },
+      { data: last30F, color: '#fbbf24' }
+    ];
+    const w = 300, h = 60, n = 30;
+    let svgHtml = '';
+    cols.forEach(col => {
+      const pts = col.data.map((v, i) => {
+        if (v === null) return null;
+        return [i * (w / (n - 1)), h - 6 - ((v - 1) / 4) * (h - 12)];
+      });
+      let d = '';
+      pts.forEach((p, i) => {
+        if (!p) return;
+        const prev = pts.slice(0, i).reverse().find(Boolean);
+        d += (prev ? ' L ' : 'M ') + p[0] + ',' + p[1];
+      });
+      if (d) svgHtml += `<path d="${d}" fill="none" stroke="${col.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`;
+      pts.forEach(p => {
+        if (!p) return;
+        svgHtml += `<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="${col.color}" opacity="0.7"/>`;
+      });
+    });
+    trendSvg.innerHTML = svgHtml || `<text x="150" y="34" text-anchor="middle" fill="rgba(255,255,255,0.2)" font-size="10" font-family="Geist,sans-serif">— no data yet —</text>`;
+  }
+
+  // Legend
+  function buildLegend() {
+    const tr = t();
+    document.getElementById('legend').innerHTML = `
+      <span>${tr.legendEmpty}:</span>
+      <div class="legend-swatch"><div class="swatch" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12)"></div></div>
+      <span>${tr.legendLow}:</span>
+      <div class="legend-swatch">${[1,2,3].map(v => `<div class="swatch" style="background:${tileColor({energy:v,mood:v,focus:v})}"></div>`).join('')}</div>
+      <span>${tr.legendHigh}:</span>
+      <div class="legend-swatch">${[3,4,5].map(v => `<div class="swatch" style="background:${tileColor({energy:v,mood:v,focus:v})}"></div>`).join('')}</div>
+    `;
+  }
+
+  // Modal
+  let modalState = { energy: 3, mood: 3, focus: 3 };
+
+  function makeDots(fieldEl, label, field, color) {
+    fieldEl.innerHTML = `<label style="color:${color}">${label}</label><div class="dots" id="dots-${field}"></div>`;
+    const wrap = fieldEl.querySelector('.dots');
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'dot' + (modalState[field] === i ? ' active' : '');
+      btn.style.borderColor = modalState[field] === i ? color : '';
+      btn.style.background = modalState[field] === i ? color + '33' : '';
+      btn.style.color = modalState[field] === i ? color : '';
+      btn.textContent = i;
+      btn.addEventListener('click', () => {
+        modalState[field] = i;
+        renderDots(field, color);
+      });
+      wrap.appendChild(btn);
+    }
+  }
+
+  function renderDots(field, color) {
+    const wrap = document.getElementById('dots-' + field);
+    if (!wrap) return;
+    wrap.querySelectorAll('.dot').forEach((btn, idx) => {
+      const active = modalState[field] === idx + 1;
+      btn.className = 'dot' + (active ? ' active' : '');
+      btn.style.borderColor = active ? color : '';
+      btn.style.background = active ? color + '33' : '';
+      btn.style.color = active ? color : '';
+    });
+  }
+
+  function openModal(key, dateObj) {
+    currentKey = key;
+    const entry = data[key];
+    modalState = entry ? { energy: entry.energy, mood: entry.mood, focus: entry.focus } : { energy: 3, mood: 3, focus: 3 };
+    const tr = t();
+    document.getElementById('modalDate').textContent = formatDateFull(dateObj);
+    document.getElementById('modalHeading').textContent = tr.today === 'Сегодня' && key === dateKey(new Date()) ? tr.today : formatDateShort(dateObj);
+    document.getElementById('labelNote').textContent = tr.lNote;
+    document.getElementById('modalNote').value = entry ? (entry.note || '') : '';
+    document.getElementById('btnSave').textContent = tr.save;
+    document.getElementById('btnDel').textContent = tr.del;
+    document.getElementById('btnDel').style.display = entry ? '' : 'none';
+    makeDots(document.getElementById('mfEnergy'), tr.lEnergy, 'energy', '#7c9fff');
+    makeDots(document.getElementById('mfMood'), tr.lMood, 'mood', '#34d399');
+    makeDots(document.getElementById('mfFocus'), tr.lFocus, 'focus', '#fbbf24');
+    document.getElementById('overlay').classList.add('open');
+  }
+
+  document.getElementById('btnSave').addEventListener('click', () => {
+    if (!currentKey) return;
+    data[currentKey] = {
+      energy: modalState.energy,
+      mood: modalState.mood,
+      focus: modalState.focus,
+      note: document.getElementById('modalNote').value.trim()
+    };
+    save();
+    closeModal();
+    render();
+  });
+
+  document.getElementById('btnDel').addEventListener('click', () => {
+    if (!currentKey) return;
+    delete data[currentKey];
+    save();
+    closeModal();
+    render();
+  });
+
+  function closeModal() {
+    document.getElementById('overlay').classList.remove('open');
+    currentKey = null;
+  }
+  document.getElementById('overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('overlay')) closeModal();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // Export / Import
+  document.getElementById('btnExport').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `chromatic-year-${YEAR}.json`; a.click(); URL.revokeObjectURL(a.href);
+  });
+  document.getElementById('fileImport').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try { data = JSON.parse(r.result); save(); render(); } catch { alert('Invalid JSON'); }
+    };
+    r.readAsText(f);
+    e.target.value = '';
+  });
+
+  // Lang
+  document.getElementById('bRu').addEventListener('click', () => { lang = 'ru'; localStorage.setItem(LK, lang); render(); });
+  document.getElementById('bEn').addEventListener('click', () => { lang = 'en'; localStorage.setItem(LK, lang); render(); });
+
+  function render() {
+    document.getElementById('bRu').classList.toggle('on', lang === 'ru');
+    document.getElementById('bEn').classList.toggle('on', lang === 'en');
+    document.getElementById('headTitle').textContent = t().title;
+    document.getElementById('headSub').textContent = t().sub(YEAR);
+    document.getElementById('footerText').textContent = t().footer;
+    buildGrid();
+    buildStats();
+    buildCharts();
+    buildLegend();
+  }
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
