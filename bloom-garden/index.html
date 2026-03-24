@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bloom — сад благодарности</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #060d08;
+      --surface: #0d1810;
+      --glass: rgba(20, 40, 22, 0.7);
+      --border: rgba(120, 200, 100, 0.12);
+      --text: #e8f2e4;
+      --muted: #7a9a78;
+      --font: 'Geist', system-ui, sans-serif;
+      --serif: 'Fraunces', Georgia, serif;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Stars bg */
+    .bg-stars {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+
+    .wrap { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
+
+    header {
+      display: flex; flex-wrap: wrap; gap: 1rem;
+      align-items: flex-start; justify-content: space-between;
+      margin-bottom: 2rem;
+    }
+    .brand h1 {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 400;
+      font-style: italic;
+      line-height: 1;
+      background: linear-gradient(135deg, #a8e6a0, #68d868, #c8f0a0);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 0.25rem;
+    }
+    .brand p { font-size: 0.85rem; color: var(--muted); max-width: 28rem; line-height: 1.5; }
+    .header-right { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+    .lang {
+      display: flex; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
+    }
+    .lang button {
+      padding: 0.38rem 0.75rem; border: none; background: transparent;
+      color: var(--muted); cursor: pointer; font-size: 0.72rem; font-weight: 700;
+    }
+    .lang button.on { background: rgba(104, 216, 104, 0.15); color: #a0e090; }
+
+    .btn {
+      font-family: var(--font); font-size: 0.82rem; font-weight: 600;
+      padding: 0.5rem 1rem; border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); cursor: pointer;
+      transition: background 0.18s, border-color 0.18s, transform 0.12s;
+    }
+    .btn:hover { background: #162018; border-color: rgba(104,216,104,0.3); }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary {
+      background: linear-gradient(135deg, #1d6b28, #2e9c3e);
+      border-color: transparent; color: #c8f0c0;
+    }
+
+    .stats-row {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 2rem;
+    }
+    .chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.5rem 0.9rem;
+      font-size: 0.78rem;
+    }
+    .chip strong { color: #a0e090; font-size: 1.05rem; margin-right: 0.25rem; }
+
+    /* Garden */
+    .garden {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 1.5rem 1rem;
+      align-items: end;
+    }
+    .flower-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      cursor: pointer;
+      animation: growIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    @keyframes growIn {
+      from { opacity: 0; transform: scaleY(0.2) translateY(20px); transform-origin: bottom; }
+      to   { opacity: 1; transform: scaleY(1) translateY(0); transform-origin: bottom; }
+    }
+    .flower-wrap:hover .flower-svg { filter: brightness(1.25) drop-shadow(0 0 8px var(--fc, #4caf50)); }
+    .flower-wrap:hover .stem-line { stroke-width: 3; }
+    .flower-date { font-size: 0.6rem; color: var(--muted); margin-top: 0.35rem; text-align: center; font-family: var(--font); }
+
+    .empty-state {
+      grid-column: 1/-1;
+      text-align: center; padding: 4rem 1rem;
+    }
+    .empty-state .big-leaf { font-size: 4rem; display: block; margin-bottom: 1rem; opacity: 0.4; }
+    .empty-state p { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem; font-family: var(--serif); font-style: italic; }
+
+    /* Overlay */
+    .overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+      opacity: 0; pointer-events: none; transition: opacity 0.22s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.75rem;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+      transform: translateY(16px) scale(0.97); transition: transform 0.22s;
+    }
+    .overlay.open .modal { transform: translateY(0) scale(1); }
+
+    .modal-flower-preview { text-align: center; margin-bottom: 1rem; }
+    .modal-title { font-family: var(--serif); font-size: 1.3rem; font-style: italic; margin-bottom: 0.35rem; }
+    .modal-meta { font-size: 0.7rem; color: var(--muted); margin-bottom: 1.25rem; }
+    .modal-body { font-size: 0.92rem; line-height: 1.6; color: var(--text); background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.85rem 1rem; margin-bottom: 1.25rem; word-break: break-word; }
+
+    .add-modal .field { margin-bottom: 1rem; }
+    .add-modal label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; margin-bottom: 0.4rem; }
+    .add-modal textarea {
+      width: 100%; min-height: 100px; padding: 0.7rem;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-family: var(--serif);
+      font-size: 0.95rem; font-style: italic; resize: vertical; line-height: 1.5;
+    }
+    .add-modal textarea::placeholder { color: var(--muted); }
+    .add-modal .char-count { font-size: 0.65rem; color: var(--muted); text-align: right; margin-top: 0.2rem; }
+    .modal-actions { display: flex; gap: 0.5rem; }
+    .modal-actions .btn { flex: 1; text-align: center; justify-content: center; }
+    .btn.danger { color: #f87171; border-color: rgba(248,113,113,0.25); background: transparent; }
+
+    footer { margin-top: 3rem; text-align: center; font-size: 0.72rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+<canvas class="bg-stars" id="starCanvas"></canvas>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1 id="headTitle">Bloom</h1>
+      <p id="headSub">Каждая благодарность вырастает в цветок. Сади сад — один момент за раз.</p>
+    </div>
+    <div class="header-right">
+      <div class="lang">
+        <button type="button" id="bRu" class="on">RU</button>
+        <button type="button" id="bEn">EN</button>
+      </div>
+      <button type="button" class="btn primary" id="btnAdd" data-i18n="addBtn">+ Новый цветок</button>
+    </div>
+  </header>
+
+  <div class="stats-row" id="statsRow"></div>
+  <div class="garden" id="garden"></div>
+</div>
+
+<!-- View modal -->
+<div class="overlay" id="viewOverlay">
+  <div class="modal">
+    <div class="modal-flower-preview" id="viewFlowerPreview"></div>
+    <div class="modal-title" id="viewTitle"></div>
+    <div class="modal-meta" id="viewMeta"></div>
+    <div class="modal-body" id="viewBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn danger" id="btnViewDel"></button>
+      <button type="button" class="btn" id="btnViewClose"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Add modal -->
+<div class="overlay add-modal" id="addOverlay">
+  <div class="modal">
+    <div class="modal-title" id="addTitle"></div>
+    <div class="modal-meta" id="addMeta"></div>
+    <div class="field">
+      <label id="labelText"></label>
+      <textarea id="addTextarea" maxlength="400" rows="4"></textarea>
+      <div class="char-count"><span id="charCount">0</span>/400</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="btnAddCancel"></button>
+      <button type="button" class="btn primary" id="btnAddSave"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const SK = 'bloom-garden-v1';
+  const LK = 'bloom-lang';
+
+  const i18n = {
+    ru: {
+      title: 'Bloom', sub: 'Каждая благодарность вырастает в цветок. Сади сад — один момент за раз.',
+      addBtn: '+ Новый цветок',
+      statsTotal: 'Цветков', statsStreak: 'Серия', statsDays: 'дней', statsThisWeek: 'На этой неделе',
+      emptyTitle: 'Твой сад ждёт', emptyText: 'Посади первый цветок — запиши, за что благодарен прямо сейчас.',
+      addTitle: 'Новый цветок', addMeta: 'Цветок вырастет из твоих слов',
+      labelText: 'За что ты благодарен?',
+      placeholder: 'Например: тёплый чай утром, разговор с другом, луч солнца в окне…',
+      cancel: 'Отмена', save: 'Посадить',
+      viewClose: 'Закрыть', viewDel: 'Удалить',
+      deleteConfirm: 'Удалить этот цветок?',
+      footer: 'Данные хранятся в браузере. Сад только твой.',
+      months: ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'],
+    },
+    en: {
+      title: 'Bloom', sub: 'Every gratitude grows a flower. Tend your garden — one moment at a time.',
+      addBtn: '+ New flower',
+      statsTotal: 'Flowers', statsStreak: 'Streak', statsDays: 'days', statsThisWeek: 'This week',
+      emptyTitle: 'Your garden awaits', emptyText: 'Plant your first flower — write what you\'re grateful for right now.',
+      addTitle: 'New flower', addMeta: 'A flower will bloom from your words',
+      labelText: 'What are you grateful for?',
+      placeholder: 'e.g. morning coffee, a friend\'s laugh, sunlight through the window…',
+      cancel: 'Cancel', save: 'Plant it',
+      viewClose: 'Close', viewDel: 'Remove',
+      deleteConfirm: 'Remove this flower?',
+      footer: 'Data stored in your browser. Your garden is private.',
+      months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    }
+  };
+
+  let lang = localStorage.getItem(LK) || 'ru';
+  let entries = [];
+  let viewId = null;
+
+  function t() { return i18n[lang]; }
+
+  function load() {
+    try { entries = JSON.parse(localStorage.getItem(SK) || '[]'); } catch (e) { entries = []; }
+  }
+  function save() { localStorage.setItem(SK, JSON.stringify(entries)); }
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+  function dateKey(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function formatDate(ts) {
+    const d = new Date(ts);
+    const tr = t();
+    return d.getDate() + ' ' + tr.months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  /* ---- Flower generation (procedural SVG) ---- */
+  function hash32(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function seeded(seed) {
+    let s = seed;
+    return () => {
+      s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+      return (s >>> 0) / 4294967296;
+    };
+  }
+
+  function flowerParams(text, id) {
+    const h = hash32(text.slice(0, 60) + id);
+    const r = seeded(h);
+    const hue = Math.round(r() * 360);
+    const hue2 = (hue + 30 + Math.round(r() * 60)) % 360;
+    const petals = 4 + Math.floor(r() * 7);          // 4–10
+    const petalL = 18 + r() * 20;                     // 18–38
+    const petalW = 7 + r() * 10;                      // 7–17
+    const centerR = 5 + r() * 5;                      // 5–10
+    const stemH = 44 + r() * 28;                      // 44–72
+    const lean = (r() - 0.5) * 14;                    // stem lean
+    const leafSide = r() > 0.5 ? 1 : -1;
+    const leafY = stemH * (0.35 + r() * 0.25);
+    return { hue, hue2, petals, petalL, petalW, centerR, stemH, lean, leafSide, leafY };
+  }
+
+  function flowerSvg(text, id, size = 90) {
+    const p = flowerParams(text, id);
+    const cx = size / 2;
+    const cy = size * 0.3;
+    const stemBottom = size - 4;
+    const stemTop = cy + p.centerR + 4;
+
+    // Colors
+    const petalFill = `hsl(${p.hue},70%,65%)`;
+    const petalFill2 = `hsl(${p.hue2},65%,72%)`;
+    const petalStroke = `hsl(${p.hue},50%,50%)`;
+    const centerFill = `hsl(${(p.hue + 40) % 360},80%,55%)`;
+    const centerStroke = `hsl(${(p.hue + 40) % 360},60%,40%)`;
+    const stemColor = '#3a7a40';
+    const leafColor = '#4a9a50';
+
+    // Petals
+    let petalsHtml = '';
+    for (let i = 0; i < p.petals; i++) {
+      const angle = (i / p.petals) * 360;
+      const pFill = i % 2 === 0 ? petalFill : petalFill2;
+      petalsHtml += `<ellipse cx="${cx}" cy="${cy - p.petalL / 2}" rx="${p.petalW / 2}" ry="${p.petalL / 2}" fill="${pFill}" stroke="${petalStroke}" stroke-width="0.5" opacity="0.92" transform="rotate(${angle} ${cx} ${cy})"/>`;
+    }
+
+    // Stem (slight lean)
+    const stemX2 = cx + p.lean;
+    const leafX = stemX2 + p.leafSide * 14;
+    const leafY = stemBottom - p.leafY;
+
+    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+      <line class="stem-line" x1="${cx}" y1="${stemBottom}" x2="${stemX2}" y2="${stemTop}" stroke="${stemColor}" stroke-width="2.2" stroke-linecap="round"/>
+      <ellipse cx="${leafX}" cy="${leafY}" rx="8" ry="4" fill="${leafColor}" opacity="0.85" transform="rotate(${p.leafSide * 30} ${leafX} ${leafY})"/>
+      ${petalsHtml}
+      <circle cx="${cx}" cy="${cy}" r="${p.centerR}" fill="${centerFill}" stroke="${centerStroke}" stroke-width="1"/>
+      <circle cx="${cx - p.centerR * 0.3}" cy="${cy - p.centerR * 0.3}" r="${p.centerR * 0.3}" fill="rgba(255,255,255,0.35)"/>
+    </svg>`;
+  }
+
+  function flowerHue(text, id) {
+    const p = flowerParams(text, id);
+    return p.hue;
+  }
+
+  /* ---- Render ---- */
+  function buildStats() {
+    const tr = t();
+    const today = dateKey(new Date());
+    const weekAgo = dateKey(new Date(Date.now() - 6 * 86400000));
+
+    let streak = 0;
+    const daySet = new Set(entries.map(e => dateKey(new Date(e.ts))));
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      if (daySet.has(dateKey(d))) streak++;
+      else break;
+    }
+
+    const thisWeek = entries.filter(e => dateKey(new Date(e.ts)) >= weekAgo).length;
+
+    document.getElementById('statsRow').innerHTML = [
+      `<div class="chip"><strong>${entries.length}</strong> ${tr.statsTotal}</div>`,
+      `<div class="chip"><strong>${streak}</strong> ${tr.statsStreak} ${tr.statsDays}</div>`,
+      `<div class="chip"><strong>${thisWeek}</strong> ${tr.statsThisWeek}</div>`,
+    ].join('');
+  }
+
+  function buildGarden() {
+    const gardenEl = document.getElementById('garden');
+    const tr = t();
+    if (entries.length === 0) {
+      gardenEl.innerHTML = `<div class="empty-state">
+        <span class="big-leaf">🌱</span>
+        <p>${tr.emptyText}</p>
+        <button type="button" class="btn primary" onclick="document.getElementById('btnAdd').click()">${tr.addBtn}</button>
+      </div>`;
+      return;
+    }
+    const sorted = [...entries].sort((a, b) => b.ts - a.ts);
+    gardenEl.innerHTML = '';
+    sorted.forEach((entry, idx) => {
+      const hue = flowerHue(entry.text, entry.id);
+      const wrap = document.createElement('div');
+      wrap.className = 'flower-wrap';
+      wrap.style.setProperty('--fc', `hsl(${hue},65%,55%)`);
+      wrap.style.animationDelay = Math.min(idx * 0.04, 0.5) + 's';
+      wrap.innerHTML = `
+        <div class="flower-svg">${flowerSvg(entry.text, entry.id, 90)}</div>
+        <div class="flower-date">${formatDate(entry.ts)}</div>
+      `;
+      wrap.addEventListener('click', () => openView(entry.id));
+      gardenEl.appendChild(wrap);
+    });
+  }
+
+  /* ---- View modal ---- */
+  function openView(id) {
+    const entry = entries.find(e => e.id === id);
+    if (!entry) return;
+    viewId = id;
+    const tr = t();
+    document.getElementById('viewFlowerPreview').innerHTML = flowerSvg(entry.text, entry.id, 100);
+    document.getElementById('viewTitle').textContent = formatDate(entry.ts);
+    document.getElementById('viewMeta').textContent = new Date(entry.ts).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('viewBody').textContent = entry.text;
+    document.getElementById('btnViewClose').textContent = tr.viewClose;
+    document.getElementById('btnViewDel').textContent = tr.viewDel;
+    document.getElementById('viewOverlay').classList.add('open');
+  }
+
+  document.getElementById('btnViewClose').addEventListener('click', () => {
+    document.getElementById('viewOverlay').classList.remove('open');
+    viewId = null;
+  });
+  document.getElementById('viewOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('viewOverlay')) {
+      document.getElementById('viewOverlay').classList.remove('open');
+      viewId = null;
+    }
+  });
+  document.getElementById('btnViewDel').addEventListener('click', () => {
+    if (!viewId) return;
+    if (!confirm(t().deleteConfirm)) return;
+    entries = entries.filter(e => e.id !== viewId);
+    save();
+    document.getElementById('viewOverlay').classList.remove('open');
+    viewId = null;
+    render();
+  });
+
+  /* ---- Add modal ---- */
+  document.getElementById('btnAdd').addEventListener('click', () => openAdd());
+
+  function openAdd() {
+    const tr = t();
+    document.getElementById('addTitle').textContent = tr.addTitle;
+    document.getElementById('addMeta').textContent = tr.addMeta;
+    document.getElementById('labelText').textContent = tr.labelText;
+    document.getElementById('addTextarea').placeholder = tr.placeholder;
+    document.getElementById('addTextarea').value = '';
+    document.getElementById('charCount').textContent = '0';
+    document.getElementById('btnAddCancel').textContent = tr.cancel;
+    document.getElementById('btnAddSave').textContent = tr.save;
+    document.getElementById('addOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('addTextarea').focus(), 100);
+  }
+
+  document.getElementById('addTextarea').addEventListener('input', e => {
+    document.getElementById('charCount').textContent = e.target.value.length;
+  });
+  document.getElementById('btnAddCancel').addEventListener('click', () => {
+    document.getElementById('addOverlay').classList.remove('open');
+  });
+  document.getElementById('addOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('addOverlay'))
+      document.getElementById('addOverlay').classList.remove('open');
+  });
+  document.getElementById('btnAddSave').addEventListener('click', () => {
+    const text = document.getElementById('addTextarea').value.trim();
+    if (!text) return;
+    entries.push({ id: uid(), ts: Date.now(), text });
+    save();
+    document.getElementById('addOverlay').classList.remove('open');
+    render();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.getElementById('viewOverlay').classList.remove('open');
+      document.getElementById('addOverlay').classList.remove('open');
+      viewId = null;
+    }
+  });
+
+  /* ---- Lang ---- */
+  document.getElementById('bRu').addEventListener('click', () => { lang = 'ru'; localStorage.setItem(LK, lang); render(); });
+  document.getElementById('bEn').addEventListener('click', () => { lang = 'en'; localStorage.setItem(LK, lang); render(); });
+
+  /* ---- Stars ---- */
+  function drawStars() {
+    const c = document.getElementById('starCanvas');
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    const ctx = c.getContext('2d');
+    for (let i = 0; i < 120; i++) {
+      const x = Math.random() * c.width;
+      const y = Math.random() * c.height * 0.6;
+      const r = Math.random() * 1.2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${0.1 + Math.random() * 0.35})`;
+      ctx.fill();
+    }
+  }
+
+  /* ---- Main render ---- */
+  function render() {
+    document.getElementById('bRu').classList.toggle('on', lang === 'ru');
+    document.getElementById('bEn').classList.toggle('on', lang === 'en');
+    document.getElementById('headTitle').textContent = t().title;
+    document.getElementById('headSub').textContent = t().sub;
+    document.getElementById('btnAdd').textContent = t().addBtn;
+    document.getElementById('footerText').textContent = t().footer;
+    buildStats();
+    buildGarden();
+  }
+
+  load();
+  drawStars();
+  render();
+  window.addEventListener('resize', drawStars);
+})();
+</script>
+
+<footer style="position:relative;z-index:1;margin-top:3rem;text-align:center;font-size:.72rem;color:#7a9a78;padding-bottom:1.5rem">
+  <span id="footerText"></span>
+</footer>
+</body>
+</html>
