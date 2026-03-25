@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Strata — геология твоих эмоций</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0b0a08;
+      --bg2:     #131109;
+      --surface: #1b1810;
+      --border:  rgba(255,220,150,0.1);
+      --text:    #ede8dc;
+      --muted:   #7a7060;
+      --font:    'Geist', system-ui, sans-serif;
+      --serif:   'Syne', sans-serif;
+      --mono:    'Geist Mono', monospace;
+    }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+    /* ── Layout ── */
+    .app { display: flex; flex: 1; min-height: 0; }
+    .sidebar {
+      width: 280px; flex-shrink: 0;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      z-index: 10;
+    }
+    .canvas-col { flex: 1; position: relative; overflow: hidden; }
+
+    /* ── Topbar ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.85rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+    .brand { display: flex; align-items: baseline; gap: 0.6rem; }
+    .brand h1 {
+      font-family: var(--serif); font-size: 1.1rem; font-weight: 800;
+      background: linear-gradient(135deg, #e8c97a, #c99b40, #a07030);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .brand span { font-size: 0.72rem; color: var(--muted); }
+    .topbar-right { display: flex; gap: 0.5rem; align-items: center; }
+    .lang { display: flex; border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+    .lang button { padding: 0.33rem 0.65rem; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 0.7rem; font-weight: 700; }
+    .lang button.on { background: rgba(200,160,60,0.18); color: #d4a840; }
+    .btn {
+      font-family: var(--font); font-size: 0.78rem; font-weight: 600;
+      padding: 0.42rem 0.85rem; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text);
+      cursor: pointer; transition: background 0.15s, transform 0.1s;
+    }
+    .btn:hover { background: #221e10; }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary { background: linear-gradient(135deg, #7a5010, #b07020); border-color: transparent; color: #ffe8a0; }
+    .btn.primary:hover { filter: brightness(1.12); }
+
+    /* ── Sidebar panels ── */
+    .panel { padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); }
+    .panel-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); font-weight: 700; margin-bottom: 0.75rem; }
+
+    /* Chips */
+    .chips { display: flex; flex-direction: column; gap: 0.45rem; }
+    .chip { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+    .chip strong { color: #d4a840; font-family: var(--mono); font-size: 1rem; }
+
+    /* Emotions grid */
+    .em-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.75rem; }
+    .em-btn {
+      padding: 0.45rem 0.4rem; border-radius: 8px; border: 1px solid transparent;
+      background: var(--surface); cursor: pointer; font-size: 0.78rem; font-weight: 600;
+      text-align: center; transition: transform 0.12s, filter 0.12s;
+      display: flex; align-items: center; gap: 0.35rem; justify-content: center;
+      color: var(--text);
+    }
+    .em-btn:hover { filter: brightness(1.2); transform: scale(1.04); }
+    .em-btn.selected { outline: 2px solid rgba(255,220,120,0.6); }
+    .em-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Intensity */
+    .intensity-row { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
+    .int-btn {
+      flex: 1; padding: 0.4rem; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--muted); cursor: pointer; font-size: 0.75rem;
+      text-align: center; transition: all 0.15s;
+    }
+    .int-btn.on { background: rgba(200,160,60,0.18); color: #d4a840; border-color: rgba(200,160,60,0.35); }
+
+    /* Note */
+    .note-input {
+      width: 100%; padding: 0.5rem; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-family: var(--font); font-size: 0.82rem;
+      resize: none; outline: none; margin-bottom: 0.75rem;
+    }
+    .note-input:focus { border-color: rgba(200,160,60,0.4); }
+
+    /* Depth indicator */
+    .depth-bar { margin-top: 0.5rem; }
+    .depth-track { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-top: 0.35rem; }
+    .depth-fill { height: 100%; background: linear-gradient(90deg, #7a5010, #d4a840); border-radius: 2px; transition: width 0.4s; }
+
+    /* ── Canvas ── */
+    #strataCanvas { display: block; cursor: crosshair; }
+    .canvas-overlay {
+      position: absolute; top: 0; left: 0; right: 0;
+      pointer-events: none;
+      display: flex; align-items: flex-start; justify-content: flex-end;
+      padding: 0.75rem;
+    }
+    .canvas-hint { font-size: 0.68rem; color: rgba(255,255,255,0.2); }
+
+    /* ── Tooltip ── */
+    .tooltip {
+      position: absolute; pointer-events: none;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.65rem 0.85rem;
+      font-size: 0.8rem; min-width: 160px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      opacity: 0; transition: opacity 0.15s;
+      z-index: 20;
+    }
+    .tooltip.visible { opacity: 1; }
+    .tooltip-name { font-weight: 700; margin-bottom: 0.2rem; }
+    .tooltip-time { font-size: 0.68rem; color: var(--muted); font-family: var(--mono); }
+    .tooltip-note { margin-top: 0.35rem; font-size: 0.75rem; color: var(--muted); font-style: italic; border-top: 1px solid var(--border); padding-top: 0.35rem; }
+    .tooltip-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 0.3rem; vertical-align: middle; }
+
+    /* ── View modal (full layer detail) ── */
+    .overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem; max-width: 360px; width: 100%;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      transform: translateY(10px); transition: transform 0.2s;
+    }
+    .overlay.open .modal { transform: translateY(0); }
+    .modal-swatch { width: 40px; height: 12px; border-radius: 6px; margin-bottom: 0.75rem; }
+    .modal-name { font-family: var(--serif); font-size: 1.4rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .modal-time { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); margin-bottom: 0.75rem; }
+    .modal-note { font-size: 0.88rem; color: var(--text); line-height: 1.5; padding: 0.6rem 0.75rem; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 1rem; word-break: break-word; }
+    .modal-actions { display: flex; gap: 0.5rem; }
+    .modal-actions .btn { flex: 1; }
+    .btn.danger { color: #f87171; border-color: rgba(248,113,113,0.2); background: transparent; }
+
+    @media (max-width: 680px) {
+      .sidebar { width: 220px; }
+    }
+    @media (max-width: 520px) {
+      .app { flex-direction: column; }
+      .sidebar { width: 100%; max-height: 55vh; border-right: none; border-bottom: 1px solid var(--border); }
+      html, body { overflow: auto; }
+      .canvas-col { min-height: 50vh; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <h1 id="headTitle">Strata</h1>
+    <span id="headSub">геология твоих эмоций</span>
+  </div>
+  <div class="topbar-right">
+    <div class="lang">
+      <button type="button" id="bRu" class="on">RU</button>
+      <button type="button" id="bEn">EN</button>
+    </div>
+    <button type="button" class="btn" id="btnExport">↓ PNG</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <!-- Stats -->
+    <div class="panel">
+      <div class="panel-label" id="lStats"></div>
+      <div class="chips" id="statsChips"></div>
+    </div>
+
+    <!-- Log emotion -->
+    <div class="panel" style="flex:1">
+      <div class="panel-label" id="lLog"></div>
+
+      <div class="em-grid" id="emGrid"></div>
+
+      <div class="panel-label" id="lIntensity"></div>
+      <div class="intensity-row" id="intRow"></div>
+
+      <textarea class="note-input" id="noteInput" rows="2"></textarea>
+
+      <button type="button" class="btn primary" id="btnDeposit" style="width:100%"></button>
+
+      <div class="depth-bar">
+        <div style="font-size:0.65rem;color:var(--muted);display:flex;justify-content:space-between">
+          <span id="lDepth"></span>
+          <span id="depthVal" style="font-family:var(--mono);color:#d4a840"></span>
+        </div>
+        <div class="depth-track"><div class="depth-fill" id="depthFill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Canvas -->
+  <div class="canvas-col" id="canvasCol">
+    <canvas id="strataCanvas"></canvas>
+    <div class="canvas-overlay"><span class="canvas-hint" id="hintText"></span></div>
+    <div class="tooltip" id="tooltip">
+      <div class="tooltip-name" id="ttName"></div>
+      <div class="tooltip-time" id="ttTime"></div>
+      <div class="tooltip-note" id="ttNote" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-swatch" id="modalSwatch"></div>
+    <div class="modal-name" id="modalName"></div>
+    <div class="modal-time" id="modalTime"></div>
+    <div class="modal-note" id="modalNote" style="display:none"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn danger" id="btnDelete"></button>
+      <button type="button" class="btn" id="btnClose"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const SK = 'strata-v1';
+  const LK = 'strata-lang';
+
+  const EMOTIONS = [
+    { key: 'joy',      color: '#c4900a', darkColor: '#7a5c06' },
+    { key: 'calm',     color: '#4a7a9b', darkColor: '#2d4e63' },
+    { key: 'focus',    color: '#4a4a9a', darkColor: '#2e2e60' },
+    { key: 'anxious',  color: '#9a3a2a', darkColor: '#5e231a' },
+    { key: 'tired',    color: '#6a6a5a', darkColor: '#3e3e30' },
+    { key: 'creative', color: '#2a8a7a', darkColor: '#1a5a50' },
+    { key: 'grateful', color: '#b07030', darkColor: '#6e4520' },
+    { key: 'sad',      color: '#4a5a7a', darkColor: '#2d3850' },
+  ];
+
+  const i18n = {
+    ru: {
+      title: 'Strata', sub: 'геология твоих эмоций',
+      lStats: 'Статистика', lLog: 'Отложить слой', lIntensity: 'Интенсивность',
+      lDepth: 'Глубина породы', depthLayers: (n) => n + ' слоёв',
+      notePlace: 'Заметка (необязательно)…',
+      deposit: '⬇ Отложить слой',
+      hint: 'Наведи на слой — клик для деталей',
+      chipTotal: 'Слоёв всего', chipToday: 'Сегодня', chipFreq: 'Чаще всего',
+      int: ['Тонкий', 'Средний', 'Мощный'],
+      emotions: { joy:'Радость', calm:'Спокойствие', focus:'Фокус', anxious:'Тревога', tired:'Усталость', creative:'Творчество', grateful:'Благодарность', sad:'Грусть' },
+      modalDel: 'Удалить слой', modalClose: 'Закрыть',
+      confirmDel: 'Удалить этот слой?',
+      months: ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'],
+    },
+    en: {
+      title: 'Strata', sub: 'the geology of your emotions',
+      lStats: 'Statistics', lLog: 'Deposit a layer', lIntensity: 'Intensity',
+      lDepth: 'Rock depth', depthLayers: (n) => n + ' layers',
+      notePlace: 'Note (optional)…',
+      deposit: '⬇ Deposit layer',
+      hint: 'Hover to preview — click for details',
+      chipTotal: 'Total layers', chipToday: 'Today', chipFreq: 'Most frequent',
+      int: ['Thin', 'Medium', 'Thick'],
+      emotions: { joy:'Joy', calm:'Calm', focus:'Focus', anxious:'Anxious', tired:'Tired', creative:'Creative', grateful:'Grateful', sad:'Sad' },
+      modalDel: 'Delete layer', modalClose: 'Close',
+      confirmDel: 'Delete this layer?',
+      months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    }
+  };
+
+  let lang = localStorage.getItem(LK) || 'ru';
+  let entries = [];
+  let selectedEmotion = EMOTIONS[0].key;
+  let intensity = 2; // 1,2,3
+  let detailId = null;
+  let layerHitMap = []; // [{y0, y1, id}]
+
+  function t() { return i18n[lang]; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function dateKey(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function formatTs(ts) {
+    const d = new Date(ts);
+    const tr = t();
+    return d.getDate() + ' ' + tr.months[d.getMonth()] + ', ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+
+  function load() {
+    try { entries = JSON.parse(localStorage.getItem(SK) || '[]'); } catch (e) { entries = []; }
+  }
+  function persist() { localStorage.setItem(SK, JSON.stringify(entries)); }
+
+  function getEmotion(key) { return EMOTIONS.find(e => e.key === key) || EMOTIONS[0]; }
+
+  /* ── Noise texture helper ── */
+  function noiseLayer(ctx, x, y, w, h, alpha) {
+    const img = ctx.createImageData(w, Math.min(h, 1));
+    // Only paint noise on a few scanlines for performance
+    const step = Math.max(2, Math.floor(h / 24));
+    for (let dy = 0; dy < h; dy += step) {
+      const row = ctx.createImageData(w, 1);
+      for (let i = 0; i < w; i++) {
+        const v = Math.random() * 60 - 30;
+        row.data[i * 4] = 128 + v;
+        row.data[i * 4 + 1] = 128 + v;
+        row.data[i * 4 + 2] = 128 + v;
+        row.data[i * 4 + 3] = Math.floor(alpha * 255);
+      }
+      ctx.putImageData(row, x, y + dy);
+    }
+  }
+
+  /* ── Canvas rendering ── */
+  function drawStrata() {
+    const col = document.getElementById('canvasCol');
+    const canvas = document.getElementById('strataCanvas');
+    const W = col.clientWidth;
+    const H = col.clientHeight;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#0b0a08';
+    ctx.fillRect(0, 0, W, H);
+
+    if (entries.length === 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.font = '14px Geist, sans-serif';
+      ctx.textAlign = 'center';
+      const msg = lang === 'ru' ? 'Первый слой появится после записи эмоции →' : 'Your first layer will appear after logging an emotion →';
+      ctx.fillText(msg, W / 2, H / 2);
+      return;
+    }
+
+    layerHitMap = [];
+    const sorted = [...entries].sort((a, b) => a.ts - b.ts); // oldest at bottom
+
+    // Calculate total height units
+    const totalUnits = sorted.reduce((s, e) => s + layerH(e.intensity), 0);
+    const minH = Math.max(H, totalUnits);
+    const scale = minH / totalUnits;
+
+    // Draw from bottom to top (bottom = oldest)
+    let curY = H; // start from bottom
+    sorted.forEach(entry => {
+      const em = getEmotion(entry.emotion);
+      const h = Math.max(18, Math.round(layerH(entry.intensity) * scale));
+      const y0 = curY - h;
+      curY = y0;
+
+      const today = dateKey(new Date(entry.ts)) === dateKey(new Date());
+      const brightness = today ? 1.15 : 0.85;
+
+      // Base gradient
+      const grad = ctx.createLinearGradient(0, y0, 0, y0 + h);
+      grad.addColorStop(0, blendAlpha(em.color, 0.82 * brightness));
+      grad.addColorStop(0.4, blendAlpha(em.color, 0.70 * brightness));
+      grad.addColorStop(1, blendAlpha(em.darkColor, 0.88 * brightness));
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, y0, W, h);
+
+      // Noise texture for geological feel
+      if (h > 8) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'overlay';
+        noiseLayer(ctx, 0, y0, W, h, 0.06);
+        ctx.restore();
+      }
+
+      // Seam line at top of each layer
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0); ctx.stroke();
+
+      // Label
+      if (h >= 20) {
+        const label = t().emotions[entry.emotion] || entry.emotion;
+        const timeStr = formatTs(entry.ts);
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.font = `500 ${Math.min(11, h * 0.45)}px Geist, sans-serif`;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label + '  ' + timeStr, 12, y0 + h / 2);
+        ctx.restore();
+      }
+
+      // Today glow
+      if (today) {
+        ctx.save();
+        ctx.shadowColor = em.color;
+        ctx.shadowBlur = 18;
+        ctx.strokeStyle = em.color + '66';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0); ctx.stroke();
+        ctx.restore();
+      }
+
+      layerHitMap.push({ y0: Math.round(y0), y1: Math.round(y0 + h), id: entry.id });
+    });
+
+    updateDepth(sorted.length);
+  }
+
+  function layerH(intensity) {
+    return intensity === 1 ? 22 : intensity === 2 ? 44 : 72;
+  }
+
+  function blendAlpha(hex, a) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function updateDepth(n) {
+    document.getElementById('depthVal').textContent = t().depthLayers(n);
+    const maxLayers = 60;
+    document.getElementById('depthFill').style.width = Math.min(100, (n / maxLayers) * 100) + '%';
+  }
+
+  /* ── Stats ── */
+  function buildStats() {
+    const tr = t();
+    const today = dateKey(new Date());
+    const todayCount = entries.filter(e => dateKey(new Date(e.ts)) === today).length;
+    const freq = (() => {
+      const c = {};
+      entries.forEach(e => { c[e.emotion] = (c[e.emotion] || 0) + 1; });
+      return Object.entries(c).sort((a, b) => b[1] - a[1])[0];
+    })();
+    document.getElementById('statsChips').innerHTML = `
+      <div class="chip"><span>${tr.chipTotal}</span><strong>${entries.length}</strong></div>
+      <div class="chip"><span>${tr.chipToday}</span><strong>${todayCount}</strong></div>
+      ${freq ? `<div class="chip"><span>${tr.chipFreq}</span><strong style="font-size:.82rem">${tr.emotions[freq[0]] || freq[0]}</strong></div>` : ''}
+    `;
+  }
+
+  /* ── Emotion grid ── */
+  function buildEmGrid() {
+    const tr = t();
+    const el = document.getElementById('emGrid');
+    el.innerHTML = '';
+    EMOTIONS.forEach(em => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'em-btn' + (selectedEmotion === em.key ? ' selected' : '');
+      btn.style.background = blendAlpha(em.darkColor, 0.8);
+      btn.style.borderColor = selectedEmotion === em.key ? em.color : 'transparent';
+      btn.innerHTML = `<span class="em-dot" style="background:${em.color}"></span>${tr.emotions[em.key]}`;
+      btn.addEventListener('click', () => {
+        selectedEmotion = em.key;
+        buildEmGrid();
+      });
+      el.appendChild(btn);
+    });
+  }
+
+  /* ── Intensity ── */
+  function buildIntRow() {
+    const tr = t();
+    const el = document.getElementById('intRow');
+    el.innerHTML = '';
+    [1, 2, 3].forEach(v => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'int-btn' + (intensity === v ? ' on' : '');
+      btn.textContent = tr.int[v - 1];
+      btn.addEventListener('click', () => { intensity = v; buildIntRow(); });
+      el.appendChild(btn);
+    });
+  }
+
+  /* ── Deposit ── */
+  document.getElementById('btnDeposit').addEventListener('click', () => {
+    const note = document.getElementById('noteInput').value.trim();
+    entries.push({ id: uid(), ts: Date.now(), emotion: selectedEmotion, intensity, note });
+    document.getElementById('noteInput').value = '';
+    persist();
+    drawStrata();
+    buildStats();
+  });
+
+  /* ── Canvas hover & click ── */
+  const canvas = document.getElementById('strataCanvas');
+  const tooltip = document.getElementById('tooltip');
+
+  function hitTest(y) {
+    return layerHitMap.find(l => y >= l.y0 && y <= l.y1) || null;
+  }
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const hit = hitTest(y);
+    if (hit) {
+      const entry = entries.find(e => e.id === hit.id);
+      if (!entry) { tooltip.classList.remove('visible'); return; }
+      const em = getEmotion(entry.emotion);
+      document.getElementById('ttName').innerHTML = `<span class="tooltip-swatch" style="background:${em.color}"></span>${t().emotions[entry.emotion] || entry.emotion}`;
+      document.getElementById('ttTime').textContent = formatTs(entry.ts);
+      const noteEl = document.getElementById('ttNote');
+      if (entry.note) { noteEl.textContent = entry.note; noteEl.style.display = ''; }
+      else { noteEl.style.display = 'none'; }
+      const tx = Math.min(e.clientX + 14, window.innerWidth - 200);
+      const ty = Math.max(e.clientY - 60, 8);
+      tooltip.style.left = tx + 'px'; tooltip.style.top = ty + 'px';
+      tooltip.classList.add('visible');
+      canvas.style.cursor = 'pointer';
+    } else {
+      tooltip.classList.remove('visible');
+      canvas.style.cursor = 'crosshair';
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const hit = hitTest(y);
+    if (!hit) return;
+    const entry = entries.find(e => e.id === hit.id);
+    if (!entry) return;
+    openModal(entry);
+  });
+
+  /* Touch support */
+  canvas.addEventListener('touchstart', e => {
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const y = touch.clientY - rect.top;
+    const hit = hitTest(y);
+    if (hit) { const entry = entries.find(ev => ev.id === hit.id); if (entry) { e.preventDefault(); openModal(entry); } }
+  }, { passive: false });
+
+  /* ── Modal ── */
+  function openModal(entry) {
+    detailId = entry.id;
+    const em = getEmotion(entry.emotion);
+    const tr = t();
+    document.getElementById('modalSwatch').style.background = em.color;
+    document.getElementById('modalName').textContent = tr.emotions[entry.emotion] || entry.emotion;
+    document.getElementById('modalTime').textContent = formatTs(entry.ts);
+    const noteEl = document.getElementById('modalNote');
+    if (entry.note) { noteEl.textContent = entry.note; noteEl.style.display = ''; }
+    else { noteEl.style.display = 'none'; }
+    document.getElementById('btnDelete').textContent = tr.modalDel;
+    document.getElementById('btnClose').textContent = tr.modalClose;
+    document.getElementById('overlay').classList.add('open');
+  }
+
+  document.getElementById('btnClose').addEventListener('click', closeModal);
+  document.getElementById('overlay').addEventListener('click', e => { if (e.target === document.getElementById('overlay')) closeModal(); });
+  document.getElementById('btnDelete').addEventListener('click', () => {
+    if (!detailId) return;
+    if (!confirm(t().confirmDel)) return;
+    entries = entries.filter(e => e.id !== detailId);
+    persist();
+    closeModal();
+    drawStrata();
+    buildStats();
+  });
+  function closeModal() { document.getElementById('overlay').classList.remove('open'); detailId = null; }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  /* ── Export PNG ── */
+  document.getElementById('btnExport').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'strata-' + dateKey(new Date()) + '.png';
+    a.click();
+  });
+
+  /* ── Lang ── */
+  document.getElementById('bRu').addEventListener('click', () => { lang = 'ru'; localStorage.setItem(LK, lang); render(); });
+  document.getElementById('bEn').addEventListener('click', () => { lang = 'en'; localStorage.setItem(LK, lang); render(); });
+
+  /* ── Resize ── */
+  let resizeTimer;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(drawStrata, 80); });
+
+  /* ── Main render ── */
+  function render() {
+    const tr = t();
+    document.getElementById('bRu').classList.toggle('on', lang === 'ru');
+    document.getElementById('bEn').classList.toggle('on', lang === 'en');
+    document.getElementById('headTitle').textContent = tr.title;
+    document.getElementById('headSub').textContent = tr.sub;
+    document.getElementById('lStats').textContent = tr.lStats;
+    document.getElementById('lLog').textContent = tr.lLog;
+    document.getElementById('lIntensity').textContent = tr.lIntensity;
+    document.getElementById('lDepth').textContent = tr.lDepth;
+    document.getElementById('noteInput').placeholder = tr.notePlace;
+    document.getElementById('btnDeposit').textContent = tr.deposit;
+    document.getElementById('hintText').textContent = tr.hint;
+    buildStats();
+    buildEmGrid();
+    buildIntRow();
+    drawStrata();
+  }
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
